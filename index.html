@@ -33,6 +33,9 @@
         <span class="header-title" id="header-title">SUBLIME FOOD</span>
       </div>
       <div class="header-right">
+        <button class="icon-btn" id="btn-theme" aria-label="Changer le thème" title="Mode sombre / clair">
+          <span id="theme-icon">🌙</span>
+        </button>
         <button class="icon-btn" id="btn-notifications" aria-label="Notifications">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span class="badge" id="notif-badge">0</span>
@@ -150,7 +153,8 @@
       <section id="screen-otp" class="screen">
         <div class="auth-container">
           <h2 class="auth-heading">Vérification OTP</h2>
-          <p class="auth-sub">Entrez le code à 6 chiffres envoyé par SMS</p>
+          <p class="auth-sub" id="otp-subtitle">Entrez le code à 6 chiffres envoyé par SMS</p>
+          <div id="otp-hint" class="otp-hint hidden"></div>
           <form id="form-otp">
             <div class="otp-inputs">
               <input type="text" maxlength="1" class="otp-digit" data-index="0">
@@ -247,22 +251,58 @@
 
       <!-- CHAT -->
       <section id="screen-chat" class="screen">
-        <div class="chat-container">
-          <div class="chat-header-info">
-            <h3>Centre d'assistance</h3>
-            <p>Notre équipe est disponible 7j/7</p>
+        <div class="support-layout">
+          <div class="support-contacts-card">
+            <h3>Contacts directs</h3>
+            <p class="support-sub">Notre équipe vous répond 7j/7</p>
+            <div class="contact-grid">
+              <a href="tel:0822624705" class="contact-card phone">
+                <span class="contact-card-icon">📞</span>
+                <div><strong>Appeler</strong><span>0822624705</span></div>
+              </a>
+              <a href="tel:0839297545" class="contact-card phone">
+                <span class="contact-card-icon">📞</span>
+                <div><strong>Appeler</strong><span>0839297545</span></div>
+              </a>
+              <a href="https://wa.me/243822624705" target="_blank" rel="noopener" class="contact-card whatsapp">
+                <span class="contact-card-icon">💬</span>
+                <div><strong>WhatsApp</strong><span>0822624705</span></div>
+              </a>
+              <a href="https://wa.me/243839297545" target="_blank" rel="noopener" class="contact-card whatsapp">
+                <span class="contact-card-icon">💬</span>
+                <div><strong>WhatsApp</strong><span>0839297545</span></div>
+              </a>
+            </div>
+            <div class="company-payment-box" style="margin-top:16px">
+              <h4>💳 Paiement entreprise</h4>
+              <p>Payez via Mobile Money au numéro Sublime Food :</p>
+              <div class="company-nums">
+                <a href="tel:0822624705" class="company-num">📞 0822624705</a>
+                <a href="tel:0839297545" class="company-num">📞 0839297545</a>
+              </div>
+              <p>Orange Money : <strong>0822624705</strong> · Airtel Money : <strong>0839297545</strong></p>
+            </div>
+            <div class="support-social">
+              <a href="https://www.facebook.com/search/top?q=Sublime%20Food" target="_blank" rel="noopener">📘 Facebook<br><small>Sublime Food</small></a>
+              <a href="https://www.instagram.com/explore/tags/sublimefood/" target="_blank" rel="noopener">📸 Instagram<br><small>Sublime Food</small></a>
+            </div>
           </div>
-          <div class="chat-messages" id="chat-messages"></div>
-          <div class="chat-input-bar">
-            <input type="text" id="chat-input" placeholder="Écrivez votre message...">
-            <button class="btn btn-primary btn-sm" id="btn-send-chat">Envoyer</button>
-          </div>
-          <div class="support-contacts">
-            <h4>Contacts directs</h4>
-            <a href="tel:0822624705" class="contact-link">📞 0822624705</a>
-            <a href="tel:0839297545" class="contact-link">📞 0839297545</a>
-            <a href="https://wa.me/243822624705" target="_blank" class="contact-link whatsapp">💬 WhatsApp 0822624705</a>
-            <a href="https://wa.me/243839297545" target="_blank" class="contact-link whatsapp">💬 WhatsApp 0839297545</a>
+          <div class="chat-container">
+            <div class="chat-header-info">
+              <div class="ai-badge">🤖 Assistant IA</div>
+              <h3>Conseiller Sublime Food</h3>
+              <p>Je vous guide pour vos commandes, livraisons et questions</p>
+            </div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-suggestions" id="chat-suggestions">
+              <button type="button" class="suggestion-chip" data-msg="Où est ma commande ?">Suivi commande</button>
+              <button type="button" class="suggestion-chip" data-msg="Quels modes de paiement acceptez-vous ?">Paiement</button>
+              <button type="button" class="suggestion-chip" data-msg="Combien de temps pour la livraison ?">Livraison</button>
+            </div>
+            <div class="chat-input-bar">
+              <input type="text" id="chat-input" placeholder="Posez votre question..." autocomplete="off">
+              <button class="btn btn-primary btn-sm" id="btn-send-chat">Envoyer</button>
+            </div>
           </div>
         </div>
       </section>
@@ -302,11 +342,37 @@
       </button>
     </nav>
 
+    <!-- MODAL SOCIAL -->
+    <div id="social-modal" class="modal hidden">
+      <div class="modal-backdrop" id="social-modal-backdrop"></div>
+      <div class="modal-card">
+        <h3 id="social-modal-title">Connexion</h3>
+        <p class="modal-sub">Complétez vos informations pour continuer</p>
+        <form id="social-form">
+          <div class="form-group">
+            <label>Nom complet</label>
+            <input type="text" id="social-name" required placeholder="Votre nom">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="social-email" required placeholder="exemple@email.com">
+          </div>
+          <div class="form-group">
+            <label>Téléphone (optionnel)</label>
+            <input type="tel" id="social-phone" placeholder="08XXXXXXXX">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Continuer</button>
+          <button type="button" class="btn btn-secondary btn-block" id="social-cancel" style="margin-top:8px">Annuler</button>
+        </form>
+      </div>
+    </div>
+
     <!-- TOAST -->
     <div id="toast" class="toast hidden"></div>
   </div>
 
   <script src="js/data.js"></script>
+  <script src="js/catalog.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/app.js"></script>

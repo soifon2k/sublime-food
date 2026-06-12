@@ -38,6 +38,7 @@ const Auth = {
     };
     users.push(user);
     localStorage.setItem('sublime_users', JSON.stringify(users));
+
     try {
       const res = await fetch('/api/otp/send', {
         method: 'POST',
@@ -49,14 +50,39 @@ const Auth = {
         sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ userId: user.id, phone, token: data.token }));
         return { success: true, needsOtp: true, phone, message: data.message };
       }
-    } catch { /* fallback local */ }
+    } catch { /* mode local */ }
+
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ userId: user.id, otp, phone }));
-    return { success: true, needsOtp: true, phone, message: `Code généré pour ${phone}` };
+    sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ userId: user.id, otp, phone, localMode: true }));
+    return { success: true, needsOtp: true, phone, otp, localMode: true, message: `Code de vérification envoyé au ${phone}` };
   },
 
-  socialLogin() {
-    return { success: false, message: 'Connexion Google/Facebook nécessite une configuration OAuth. Utilisez l\'inscription par email.' };
+  socialLogin(provider, profile) {
+    const users = this._getUsers();
+    const email = profile.email || `${provider}_${Date.now()}@sublimefood.local`;
+    let user = users.find(u => u.email === email || (u.provider === provider && u.email === profile.email));
+
+    if (!user) {
+      user = {
+        id: 'u' + Date.now(),
+        name: profile.name,
+        email,
+        phone: profile.phone || '',
+        password: 'social_' + provider + '_' + Date.now(),
+        points: 0,
+        favorites: [],
+        addresses: [],
+        orders: [],
+        provider,
+        createdAt: new Date().toISOString()
+      };
+      users.push(user);
+      localStorage.setItem('sublime_users', JSON.stringify(users));
+    }
+
+    const session = { ...user, password: undefined };
+    this.saveUser(session);
+    return { success: true, user: session };
   },
 
   async verifyOtp(code) {
@@ -73,7 +99,11 @@ const Auth = {
         const data = await res.json();
         if (!res.ok || !data.success) return { success: false, message: data.error || 'Code OTP incorrect.' };
       } catch {
-        return { success: false, message: 'Impossible de vérifier le code. Réessayez.' };
+        if (pending.localMode && code === pending.otp) {
+          /* ok local */
+        } else {
+          return { success: false, message: 'Impossible de vérifier le code. Réessayez.' };
+        }
       }
     } else if (code !== pending.otp) {
       return { success: false, message: 'Code OTP incorrect.' };
@@ -82,10 +112,14 @@ const Auth = {
     const users = this._getUsers();
     const user = users.find(u => u.id === pending.userId);
     if (!user) return { success: false, message: 'Utilisateur introuvable.' };
-    const session = { ...user, password: undefined };
+    const session = { ...user, password: undefined, phoneVerified: true };
     this.saveUser(session);
     sessionStorage.removeItem(this.OTP_KEY);
-    return { success: true };
+    return { success: true, user: session };
+  },
+
+  getPendingOtp() {
+    try { return JSON.parse(sessionStorage.getItem(this.OTP_KEY)); } catch { return null; }
   },
 
   async resendOtp() {
@@ -99,23 +133,23 @@ const Auth = {
       });
       const data = await res.json();
       if (res.ok && data.token) {
-        sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ ...pending, token: data.token, otp: undefined }));
+        sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ ...pending, token: data.token, otp: undefined, localMode: false }));
         return { success: true, message: data.message || 'Code renvoyé par SMS.' };
       }
-    } catch { /* fallback */ }
+    } catch { /* local */ }
     const otp = String(Math.floor(100000 + Math.random() * 900000));
-    pending.otp = otp;
-    delete pending.token;
-    sessionStorage.setItem(this.OTP_KEY, JSON.stringify(pending));
-    return { success: true, message: 'Un nouveau code a été généré.' };
+    sessionStorage.setItem(this.OTP_KEY, JSON.stringify({ ...pending, otp, token: undefined, localMode: true }));
+    return { success: true, message: 'Nouveau code généré.', otp, localMode: true };
   },
 
   forgotPassword(email) {
     const users = this._getUsers();
-    if (!users.find(u => u.email === email)) {
-      return { success: false, message: 'Aucun compte associé à cet email.' };
-    }
-    return { success: true, message: 'Si un compte existe, un lien de réinitialisation sera envoyé à ' + email };
+    const user = users.find(u => u.email === email);
+    if (!user) return { success: false, message: 'Aucun compte associé à cet email.' };
+    const tempPass = 'SF' + Math.floor(100000 + Math.random() * 900000);
+    user.password = tempPass;
+    localStorage.setItem('sublime_users', JSON.stringify(users));
+    return { success: true, message: `Mot de passe temporaire : ${tempPass} — Connectez-vous et changez-le dans Paramètres.` };
   },
 
   logout() {
@@ -129,7 +163,12 @@ const Auth = {
     this.saveUser(user);
     const users = this._getUsers();
     const idx = users.findIndex(u => u.id === user.id);
-    if (idx >= 0) { users[idx] = { ...users[idx], ...updates }; localStorage.setItem('sublime_users', JSON.stringify(users)); }
+    if (idx >= 0) {
+      const merged = { ...users[idx], ...updates };
+      if (updates.password) merged.password = updates.password;
+      users[idx] = merged;
+      localStorage.setItem('sublime_users', JSON.stringify(users));
+    }
   },
 
   addPoints(amount) {
@@ -144,7 +183,8 @@ const Auth = {
     if (!user) return false;
     user.favorites = user.favorites || [];
     const idx = user.favorites.indexOf(productId);
-    if (idx >= 0) { user.favorites.splice(idx, 1); } else { user.favorites.push(productId); }
+    if (idx >= 0) user.favorites.splice(idx, 1);
+    else user.favorites.push(productId);
     this.saveUser(user);
     return user.favorites.includes(productId);
   },

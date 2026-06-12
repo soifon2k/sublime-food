@@ -10,7 +10,10 @@
     selectedPayment: null,
     activeOrder: null,
     notifications: [],
-    searchQuery: ''
+    searchQuery: '',
+    chatHistory: [],
+    chatReady: false,
+    socialProvider: null
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -27,6 +30,10 @@
   }
 
   function navigate(screen, opts = {}) {
+    if (screen !== 'tracking' && state._trackPoll) {
+      clearInterval(state._trackPoll);
+      state._trackPoll = null;
+    }
     state.screen = screen;
     $$('.screen').forEach(s => s.classList.remove('active'));
     const el = $(`#screen-${screen}`);
@@ -45,7 +52,8 @@
       landing: renderLanding, home: renderHome, catalog: renderCatalog,
       product: () => renderProduct(state.currentProduct),
       cart: renderCart, checkout: renderCheckout, tracking: renderTracking,
-      notifications: renderNotifications, profile: renderProfile, loyalty: renderLoyalty
+      notifications: renderNotifications, profile: renderProfile, loyalty: renderLoyalty,
+      otp: renderOtp, chat: () => { if (!state.chatReady) initChat(); }
     };
     if (renderers[screen]) renderers[screen]();
 
@@ -63,13 +71,46 @@
   }
 
   function getPromotions() {
-    return JSON.parse(localStorage.getItem('sublime_promotions') || '[]');
+    return Catalog.getPromotions();
   }
+
+  function getProducts() { return Catalog.getProducts(); }
+  function getCategories() { return Catalog.getCategories(); }
+
+  function needsCompanyInfo(pmId) {
+    const pm = SUBLIME_DATA.paymentMethods.find(m => m.id === pmId);
+    return pm && (pm.needsCompanyInfo || pm.id === 'physical');
+  }
+
+  function companyPaymentHTML(mode) {
+    const b = SUBLIME_DATA.brand;
+    const acc = b.companyAccounts;
+    const physical = mode === 'physical';
+    return `<div class="company-payment-box">
+      <h4>${physical ? '🏪 Paiement en boutique' : '💳 Payer via le compte Sublime Food'}</h4>
+      <p>${physical ? 'Rendez-vous chez Sublime Food ou payez via nos numéros entreprise :' : 'Effectuez votre paiement à l\'un de nos numéros entreprise :'}</p>
+      <div class="company-nums">
+        <a href="tel:0822624705" class="company-num">📞 0822624705</a>
+        <a href="tel:0839297545" class="company-num">📞 0839297545</a>
+      </div>
+      <div class="company-accounts">
+        <p>Orange Money : <strong>${acc.orangeMoney}</strong></p>
+        <p>Airtel Money : <strong>${acc.airtelMoney}</strong></p>
+      </div>
+      <p class="company-wa">WhatsApp : <a href="https://wa.me/243839297545" target="_blank" rel="noopener">0839297545</a> · <a href="https://wa.me/243822624705" target="_blank" rel="noopener">0822624705</a></p>
+      <p class="company-social">Facebook : <strong>${b.facebook}</strong> · Instagram : <strong>${b.instagram}</strong></p>
+      <p class="company-note">${acc.note}</p>
+      <p class="company-note"><em>Après paiement et confirmation par l'admin, votre commande sera préparée.</em></p>
+    </div>`;
+  }
+
+  const imgFallback = () => SUBLIME_DATA.imageFallback || 'assets/image-menu.png';
 
   function productCardHTML(p) {
     const price = p.priceNote ? formatPrice(p.price) : formatPrice(p.price);
+    const fb = imgFallback();
     return `<div class="product-card" data-id="${p.id}">
-      <img class="product-card-img" src="${p.image}" alt="${p.name}" loading="lazy">
+      <img class="product-card-img" src="${p.image}" alt="${p.name}" loading="lazy" onerror="this.onerror=null;this.src='${fb}'">
       <div class="product-card-body">
         <div class="product-card-name">${p.name}</div>
         <div class="product-card-price">${price}</div>
@@ -80,8 +121,9 @@
   function renderCategories(container, clickable) {
     const el = $(container);
     if (!el) return;
-    el.innerHTML = SUBLIME_DATA.categories.map(c => `
+    el.innerHTML = getCategories().map(c => `
       <div class="category-card" data-cat="${c.id}">
+        ${c.image ? `<img class="cat-img" src="${c.image}" alt="${c.name}" onerror="this.style.display='none'">` : ''}
         <div class="cat-icon">${c.icon}</div>
         <div class="cat-name">${c.name}</div>
       </div>`).join('');
@@ -109,7 +151,7 @@
       <div class="promo-icon">✨</div>
       <div><strong>${SUBLIME_DATA.brand.name}</strong><span> — ${SUBLIME_DATA.brand.slogan}</span></div>`;
     renderCategories('#landing-categories', true);
-    renderProducts('#landing-popular', SUBLIME_DATA.products.slice(0, 6));
+    renderProducts('#landing-popular', getProducts().slice(0, 6));
     const promos = getPromotions();
     $('#landing-promos').innerHTML = promos.length ? promos.map(p => `
       <div class="promo-card"><img src="${p.image || 'assets/image-acceuil.jpeg'}" alt="${p.title}"><div class="promo-card-info">
@@ -126,7 +168,7 @@
 
   function renderHome() {
     renderCategories('#home-categories', true);
-    let products = SUBLIME_DATA.products;
+    let products = getProducts();
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
       products = products.filter(p => p.name.toLowerCase().includes(q));
@@ -142,13 +184,13 @@
   }
 
   function renderCatalog() {
-    const filters = [{ id: 'all', name: 'Tout' }, ...SUBLIME_DATA.categories.map(c => ({ id: c.id, name: c.name }))];
+    const filters = [{ id: 'all', name: 'Tout' }, ...getCategories().map(c => ({ id: c.id, name: c.name }))];
     $('#catalog-filters').innerHTML = filters.map(f =>
       `<button class="filter-chip ${state.catalogFilter === f.id ? 'active' : ''}" data-filter="${f.id}">${f.name}</button>`).join('');
     $('#catalog-filters').querySelectorAll('.filter-chip').forEach(chip => {
       chip.addEventListener('click', () => { state.catalogFilter = chip.dataset.filter; renderCatalog(); });
     });
-    let products = SUBLIME_DATA.products;
+    let products = getProducts();
     if (state.catalogFilter !== 'all') products = products.filter(p => p.category === state.catalogFilter);
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
@@ -163,7 +205,7 @@
   }
 
   function openProduct(id) {
-    state.currentProduct = SUBLIME_DATA.products.find(p => p.id === id);
+    state.currentProduct = Catalog.getProduct(id);
     navigate('product');
   }
 
@@ -174,7 +216,7 @@
     const avgRating = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
     const priceDisplay = p.priceNote ? `${formatPrice(p.price)} <small style="color:#888">(${p.priceNote})</small>` : formatPrice(p.price);
     $('#product-detail').innerHTML = `
-      <img class="product-detail-img" src="${p.image}" alt="${p.name}">
+      <img class="product-detail-img" src="${p.image}" alt="${p.name}" onerror="this.onerror=null;this.src='${imgFallback()}'">
       <div class="product-detail">
         <h2>${p.name}</h2>
         ${avgRating ? `<div class="product-detail-rating">⭐ ${avgRating} · ${reviews.length} avis</div>` : ''}
@@ -236,7 +278,7 @@
     }
     $('#cart-content').innerHTML = `
       ${items.map(i => `<div class="cart-item" data-id="${i.id}">
-        <img class="cart-item-img" src="${i.image}" alt="${i.name}">
+        <img class="cart-item-img" src="${i.image}" alt="${i.name}" onerror="this.onerror=null;this.src='${imgFallback()}'">
         <div class="cart-item-info">
           <div class="cart-item-name">${i.name}</div>
           <div class="cart-item-price">${formatPrice(i.price)}</div>
@@ -298,14 +340,22 @@
         <div class="payment-methods">${SUBLIME_DATA.paymentMethods.map(pm =>
           `<div class="payment-method ${state.selectedPayment === pm.id ? 'selected' : ''}" data-pm="${pm.id}">
             <span class="pm-icon">${pm.icon}</span>${pm.name}</div>`).join('')}</div>
+        <div id="company-pay-info">${needsCompanyInfo(state.selectedPayment) ? companyPaymentHTML(state.selectedPayment) : ''}</div>
         <div class="cart-summary" style="margin-top:16px">
           <div class="cart-summary-row total"><span>Total à payer</span><span>${formatPrice(calc.total)}</span></div>
         </div>
-        <button class="btn btn-primary btn-block" style="margin-top:16px" id="co-next3">Payer ${formatPrice(calc.total)}</button></div>`,
-      `<div class="checkout-panel order-confirm"><div class="order-confirm-icon">✅</div>
-        <h2>Commande confirmée !</h2><p style="color:#888;margin:12px 0">Votre commande #${state.activeOrder?.id || ''} a été reçue.</p>
-        <p style="margin-bottom:20px">Temps estimé : 30-45 minutes</p>
-        <button class="btn btn-primary btn-block" id="co-track">Suivre ma commande</button>
+        <button class="btn btn-primary btn-block" style="margin-top:16px" id="co-next3">Valider la commande ${formatPrice(calc.total)}</button></div>`,
+      `<div class="checkout-panel order-confirm"><div class="order-confirm-icon">⏳</div>
+        <h2>Commande enregistrée !</h2>
+        <p style="color:#888;margin:12px 0">Commande <strong>#${state.activeOrder?.id || ''}</strong></p>
+        <p style="margin-bottom:12px">Votre paiement est <strong>en attente de confirmation</strong> par Sublime Food.</p>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">Une fois le paiement confirmé par l'administration, votre commande sera préparée et livrée (30-45 min).</p>
+        <div class="company-payment-box" style="margin-bottom:16px;text-align:left">
+          <p><strong>Besoin d'aide ?</strong></p>
+          <p>📞 0822624705 · 0839297545</p>
+          <p>💬 WhatsApp : 0839297545 · 0822624705</p>
+        </div>
+        <button class="btn btn-primary btn-block" id="co-track">Voir le statut</button>
         <button class="btn btn-secondary btn-block" style="margin-top:8px" id="co-home">Retour à l'accueil</button></div>`
     ];
     $('#checkout-content').innerHTML = panels[state.checkoutStep - 1];
@@ -342,23 +392,22 @@
       total: calc.total,
       payment: state.selectedPayment,
       address: $('#co-address')?.value || '',
-      status: 'received',
+      paymentStatus: 'pending',
+      status: 'awaiting_payment',
       statusIndex: 0,
       createdAt: new Date().toISOString(),
       deliverer: null
     };
     state.activeOrder = order;
-    const orders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+    const orders = Catalog.getOrders();
     orders.unshift(order);
-    localStorage.setItem('sublime_orders', JSON.stringify(orders));
+    Catalog.saveOrders(orders);
     Cart.clear();
     updateCartBadge();
-    Auth.addPoints(Math.floor(calc.total / 1000));
-    addNotification('✅', 'Commande confirmée', `Votre commande ${order.id} a été reçue.`);
+    addNotification('⏳', 'Commande enregistrée', `Commande ${order.id} — en attente de confirmation du paiement.`);
     state.checkoutStep = 4;
     state.promoCode = '';
     renderCheckout();
-    startTrackingSimulation(order);
   }
 
   function startTrackingSimulation(order) {
@@ -370,18 +419,39 @@
       if (step >= statuses.length) { clearInterval(interval); return; }
       order.status = statuses[step];
       order.statusIndex = step;
-      const orders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+      const orders = Catalog.getOrders();
       const idx = orders.findIndex(o => o.id === order.id);
-      if (idx >= 0) { orders[idx] = order; localStorage.setItem('sublime_orders', JSON.stringify(orders)); }
+      if (idx >= 0) { orders[idx] = order; Catalog.saveOrders(orders); }
       addNotification('🛵', messages[step], `Commande ${order.id} : ${messages[step]}`);
       if (state.screen === 'tracking') renderTracking();
     }, 8000);
   }
 
   function renderTracking() {
-    const order = state.activeOrder || JSON.parse(localStorage.getItem('sublime_orders') || '[]')[0];
+    const orders = Catalog.getOrders();
+    const order = state.activeOrder || orders.find(o => o.paymentStatus === 'confirmed') || orders[0];
     if (!order) {
       $('#tracking-content').innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">📦</div><h3>Aucune commande en cours</h3><button class="btn btn-primary" style="margin-top:16px" onclick="navigate('catalog')">Commander</button></div>`;
+      return;
+    }
+    if (order.paymentStatus === 'pending') {
+      $('#tracking-content').innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">⏳</div>
+        <h3>Paiement en attente</h3><p style="color:#888;margin:12px 0">Commande <strong>${order.id}</strong></p>
+        <p style="margin-bottom:16px">Votre commande sera traitée après confirmation du paiement par Sublime Food.</p>
+        ${companyPaymentHTML(order.payment)}
+        <button class="btn btn-secondary btn-block" style="margin-top:16px" onclick="navigate('home')">Retour</button></div>`;
+      if (!state._trackPoll) {
+        state._trackPoll = setInterval(() => {
+          if (state.screen !== 'tracking') { clearInterval(state._trackPoll); state._trackPoll = null; return; }
+          const fresh = Catalog.getOrders().find(o => o.id === order.id);
+          if (fresh && fresh.paymentStatus !== 'pending') { clearInterval(state._trackPoll); state._trackPoll = null; state.activeOrder = fresh; renderTracking(); }
+        }, 5000);
+      }
+      return;
+    }
+    if (order.paymentStatus === 'rejected') {
+      $('#tracking-content').innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">❌</div>
+        <h3>Paiement non confirmé</h3><p style="color:#888">Commande ${order.id} — contactez-nous au 0822624705</p></div>`;
       return;
     }
     const idx = order.statusIndex || 0;
@@ -425,7 +495,7 @@
   function renderProfile() {
     const user = Auth.getUser();
     if (!user) { navigate('auth'); return; }
-    const orders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+    const orders = Catalog.getOrders();
     const badge = SUBLIME_DATA.loyaltyBadges.filter(b => (user.points || 0) >= b.minPoints).pop();
     $('#profile-content').innerHTML = `
       <div class="profile-header">
@@ -451,20 +521,37 @@
         if (action === 'logout') { Auth.logout(); showToast('Déconnecté'); navigate('landing'); return; }
         if (action === 'loyalty') { navigate('loyalty'); return; }
         if (action === 'orders') {
+          const payLabel = { pending: '⏳ En attente', confirmed: '✅ Confirmé', rejected: '❌ Rejeté' };
           $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Mes commandes</h3>` +
-            (orders.length ? orders.map(o => `<div class="order-history-item"><div class="order-id">${o.id}</div><div class="order-date">${new Date(o.createdAt).toLocaleString('fr-FR')}</div><div class="order-total">${formatPrice(o.total)}</div></div>`).join('') : '<p style="color:#888">Aucune commande</p>');
+            (orders.length ? orders.map(o => `<div class="order-history-item"><div class="order-id">${o.id}</div>
+            <div class="order-date">${new Date(o.createdAt).toLocaleString('fr-FR')}</div>
+            <div style="font-size:0.85rem;color:#888">${payLabel[o.paymentStatus] || o.paymentStatus}</div>
+            <div class="order-total">${formatPrice(o.total)}</div></div>`).join('') : '<p style="color:#888">Aucune commande</p>');
         }
         if (action === 'favorites') {
-          const favs = SUBLIME_DATA.products.filter(p => user.favorites?.includes(p.id));
+          const favs = getProducts().filter(p => user.favorites?.includes(p.id));
           $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Mes favoris</h3>` +
             (favs.length ? `<div class="products-grid">${favs.map(p => productCardHTML(p)).join('')}</div>` : '<p style="color:#888">Aucun favori</p>');
           $('#profile-sub').querySelectorAll('.product-card').forEach(c => c.onclick = () => openProduct(c.dataset.id));
         }
         if (action === 'addresses') $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Mes adresses</h3><p style="color:#888">Aucune adresse enregistrée. Ajoutez-en lors de votre prochaine commande.</p>`;
         if (action === 'payments') $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Méthodes de paiement</h3>${SUBLIME_DATA.paymentMethods.map(pm => `<div class="profile-menu-item" style="margin-bottom:4px"><span class="pm-icon">${pm.icon}</span> ${pm.name}</div>`).join('')}`;
-        if (action === 'settings') $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Paramètres</h3>
-          <div class="form-group"><label>Notifications push</label><select><option>Activées</option><option>Désactivées</option></select></div>
-          <div class="form-group"><label>Langue</label><select><option>Français</option><option>English</option></select></div>`;
+        if (action === 'settings') {
+          const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+          $('#profile-sub').innerHTML = `<h3 style="color:var(--gold);margin-bottom:12px">Paramètres</h3>
+            <div class="form-group"><label>Apparence</label>
+              <select id="setting-theme"><option value="dark" ${theme === 'dark' ? 'selected' : ''}>Mode sombre</option><option value="light" ${theme === 'light' ? 'selected' : ''}>Mode clair</option></select>
+            </div>
+            <div class="form-group"><label>Notifications push</label><select><option>Activées</option><option>Désactivées</option></select></div>
+            <div class="form-group"><label>Nouveau mot de passe</label><input type="password" id="setting-password" placeholder="Laisser vide pour ne pas changer"></div>
+            <button class="btn btn-primary btn-sm" id="btn-save-settings">Enregistrer</button>`;
+          $('#setting-theme').onchange = (e) => setTheme(e.target.value);
+          $('#btn-save-settings').onclick = () => {
+            const pw = $('#setting-password').value;
+            if (pw) Auth.updateProfile({ password: pw });
+            showToast('Paramètres enregistrés');
+          };
+        }
       };
     });
   }
@@ -494,32 +581,83 @@
     });
   }
 
-  function initChat() {
+  function renderOtp() {
+    const pending = Auth.getPendingOtp();
+    const hint = $('#otp-hint');
+    if (pending?.localMode && pending?.otp) {
+      hint.classList.remove('hidden');
+      hint.innerHTML = `Code de vérification (SMS en attente de configuration) :<strong>${pending.otp}</strong>`;
+      $('#otp-subtitle').textContent = `Entrez le code envoyé au ${pending.phone}`;
+    } else if (pending?.phone) {
+      hint.classList.add('hidden');
+      $('#otp-subtitle').textContent = `Entrez le code à 6 chiffres envoyé au ${pending.phone}`;
+    }
+  }
+
+  async function askAssistant(text) {
     const msgs = $('#chat-messages');
-    msgs.innerHTML = `<div class="chat-msg bot">Bonjour ! 👋 Bienvenue au centre d'assistance Sublime Food. Comment puis-je vous aider ?</div>`;
-    const phones = SUBLIME_DATA.brand.phone.join(' / ');
-    const replies = {
-      'commande': 'Pour suivre votre commande, allez dans Profil > Historique ou utilisez le suivi en temps réel.',
-      'livraison': 'Nos livraisons sont effectuées en 30-45 minutes. Le suivi GPS est disponible après confirmation.',
-      'paiement': 'Nous acceptons Mobile Money, Orange Money, Airtel Money, M-Pesa, Visa, Mastercard, PayPal et paiement à la livraison.',
-      'promo': 'Consultez la section Promotions pour les offres en cours.',
-      'default': `Merci pour votre message. Contactez-nous au ${phones} ou via WhatsApp.`
-    };
-    $('#btn-send-chat').onclick = sendChat;
-    $('#chat-input').onkeydown = (e) => { if (e.key === 'Enter') sendChat(); };
+    const typing = document.createElement('div');
+    typing.className = 'chat-msg bot typing';
+    typing.textContent = 'L\'assistant réfléchit...';
+    msgs.appendChild(typing);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    state.chatHistory.push({ role: 'user', content: text });
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: state.chatHistory })
+      });
+      const data = await res.json();
+      typing.remove();
+      const reply = data.reply || 'Contactez-nous au 0822624705 pour une assistance immédiate.';
+      state.chatHistory.push({ role: 'assistant', content: reply });
+      msgs.innerHTML += `<div class="chat-msg bot">${reply}</div>`;
+    } catch {
+      typing.remove();
+      const fallback = getLocalAdvice(text);
+      state.chatHistory.push({ role: 'assistant', content: fallback });
+      msgs.innerHTML += `<div class="chat-msg bot">${fallback}</div>`;
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function getLocalAdvice(text) {
+    const m = text.toLowerCase();
+    if (/commande|suivre/.test(m)) return 'Allez dans Profil → Historique commandes pour suivre votre commande, ou utilisez l\'écran Suivi.';
+    if (/livraison|délai/.test(m)) return 'La livraison prend 30 à 45 minutes avec suivi GPS en temps réel.';
+    if (/paiement|payer/.test(m)) return 'Payez via les numéros entreprise Sublime Food : 0822624705 ou 0839297545 (Orange Money / Airtel Money). WhatsApp : 0839297545. Après paiement, l\'admin confirme votre commande. Paiement physique en boutique aussi disponible.';
+    if (/menu|plat|prix/.test(m)) return 'Consultez l\'onglet Menu pour voir tous nos plats et prix en FC.';
+    return 'Pour une aide personnalisée, appelez le 0822624705 ou 0839297545 (WhatsApp disponible).';
+  }
+
+  function initChat() {
+    if (state.chatReady) return;
+    state.chatReady = true;
+    const msgs = $('#chat-messages');
+    msgs.innerHTML = `<div class="chat-msg bot">Bonjour ! Je suis l'assistant Sublime Food. Je peux vous conseiller sur vos commandes, la livraison, le menu et les paiements. Comment puis-je vous aider ?</div>`;
+
     function sendChat() {
       const input = $('#chat-input');
       const text = input.value.trim();
       if (!text) return;
-      msgs.innerHTML += `<div class="chat-msg user">${text}</div>`;
+      msgs.innerHTML += `<div class="chat-msg user">${escapeHtml(text)}</div>`;
       input.value = '';
-      setTimeout(() => {
-        const key = Object.keys(replies).find(k => text.toLowerCase().includes(k)) || 'default';
-        msgs.innerHTML += `<div class="chat-msg bot">${replies[key]}</div>`;
-        msgs.scrollTop = msgs.scrollHeight;
-      }, 1000);
       msgs.scrollTop = msgs.scrollHeight;
+      askAssistant(text);
     }
+
+    $('#btn-send-chat').onclick = sendChat;
+    $('#chat-input').onkeydown = (e) => { if (e.key === 'Enter') sendChat(); };
+    $$('.suggestion-chip').forEach(chip => {
+      chip.onclick = () => { $('#chat-input').value = chip.dataset.msg; sendChat(); };
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function updateCartBadge() {
@@ -555,13 +693,19 @@
       if (res.success) {
         showToast(res.message || 'Code OTP envoyé par SMS');
         navigate('otp');
+        renderOtp();
       } else showToast(res.message);
     };
 
-    $('#btn-google').onclick = () => { const r = Auth.socialLogin(); showToast(r.message); };
-    $('#btn-facebook').onclick = () => { const r = Auth.socialLogin(); showToast(r.message); };
+    $('#btn-google').onclick = () => openSocialModal('google');
+    $('#btn-facebook').onclick = () => openSocialModal('facebook');
     $('#btn-forgot').onclick = () => navigate('forgot');
-    $('#form-forgot').onsubmit = (e) => { e.preventDefault(); showToast(Auth.forgotPassword($('#forgot-email').value).message); };
+    $('#form-forgot').onsubmit = (e) => {
+      e.preventDefault();
+      const r = Auth.forgotPassword($('#forgot-email').value);
+      showToast(r.message);
+      if (r.success) setTimeout(() => navigate('auth'), 2000);
+    };
 
     $$('.otp-digit').forEach((input, i, arr) => {
       input.oninput = () => { if (input.value && i < arr.length - 1) arr[i + 1].focus(); };
@@ -577,7 +721,51 @@
     $('#btn-resend-otp').onclick = async () => {
       const r = await Auth.resendOtp();
       showToast(r.message);
+      renderOtp();
     };
+  }
+
+  function openSocialModal(provider) {
+    state.socialProvider = provider;
+    $('#social-modal-title').textContent = provider === 'google' ? 'Connexion Google' : 'Connexion Facebook';
+    $('#social-modal').classList.remove('hidden');
+  }
+
+  function closeSocialModal() {
+    $('#social-modal').classList.add('hidden');
+    state.socialProvider = null;
+  }
+
+  function initSocialModal() {
+    $('#social-cancel').onclick = closeSocialModal;
+    $('#social-modal-backdrop').onclick = closeSocialModal;
+    $('#social-form').onsubmit = (e) => {
+      e.preventDefault();
+      const res = Auth.socialLogin(state.socialProvider, {
+        name: $('#social-name').value.trim(),
+        email: $('#social-email').value.trim(),
+        phone: $('#social-phone').value.trim()
+      });
+      if (res.success) {
+        closeSocialModal();
+        showToast('Bienvenue ' + res.user.name + ' !');
+        navigate('home');
+      }
+    };
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('sublime_theme', theme);
+    $('#theme-icon').textContent = theme === 'light' ? '☀️' : '🌙';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === 'light' ? '#F5F5F5' : '#121212';
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem('sublime_theme') || 'dark';
+    setTheme(saved);
+    $('#btn-theme').onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
   }
 
   function initEvents() {
@@ -615,9 +803,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     loadNotifications();
+    initTheme();
     initSplash();
     initAuth();
-    initChat();
+    initSocialModal();
     initEvents();
     updateCartBadge();
     updateNotifBadge();

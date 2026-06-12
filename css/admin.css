@@ -145,6 +145,30 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .status-preparing { background: rgba(255,152,0,0.2); color: #FFB74D; }
 .status-onway { background: rgba(156,39,176,0.2); color: #CE93D8; }
 .status-delivered { background: rgba(76,175,80,0.2); color: #81C784; }
+.status-pending { background: rgba(255,152,0,0.2); color: #FFB74D; }
+.status-confirmed { background: rgba(76,175,80,0.2); color: #81C784; }
+.status-rejected { background: rgba(229,57,53,0.2); color: #EF9A9A; }
+.status-awaiting_payment { background: rgba(255,193,7,0.15); color: #FFD54F; }
+.status-cancelled { background: rgba(158,158,158,0.2); color: #BDBDBD; }
+
+.actions-cell { display: flex; flex-wrap: wrap; gap: 6px; min-width: 140px; }
+.card-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+.text-muted { color: #888; font-size: 0.85rem; }
+
+.admin-toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+  background: var(--gold); color: var(--black);
+  padding: 12px 20px; border-radius: 8px; font-weight: 600;
+  opacity: 0; transform: translateY(12px); transition: 0.3s ease;
+  pointer-events: none; max-width: min(90vw, 320px);
+}
+.admin-toast.show { opacity: 1; transform: translateY(0); }
+
+.order-status-select {
+  padding: 6px 8px; background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 6px;
+  color: var(--white); font-size: 0.8rem;
+}
 
 /* TOOLBAR */
 .section-toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
@@ -218,10 +242,28 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   .dashboard-grid, .analytics-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
+  .sidebar { transform: translateX(-100%); box-shadow: 4px 0 24px rgba(0,0,0,0.5); }
   .sidebar.open { transform: translateX(0); }
-  .admin-main { margin-left: 0; }
-  .menu-toggle { display: block; }
+  .admin-main { margin-left: 0; width: 100%; }
+  .menu-toggle { display: block; margin-right: 12px; }
   .admin-section { padding: 16px; }
-  .admin-header { padding: 16px; }
+  .admin-header { padding: 16px; flex-wrap: wrap; gap: 8px; }
+  .admin-header h1 { font-size: 1.1rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card .stat-value { font-size: 1.2rem; }
+  .section-toolbar { flex-wrap: wrap; }
+  .section-toolbar input { max-width: 100%; flex: 1 1 100%; }
+  .section-toolbar .btn, .section-toolbar select { flex: 1 1 auto; }
+  th, td { padding: 8px 6px; font-size: 0.75rem; }
+  .table-img { width: 32px; height: 32px; }
+  .actions-cell { flex-direction: column; min-width: 100px; }
+  .actions-cell .btn { width: 100%; }
+  .deliverers-grid, .categories-admin, .promos-admin { grid-template-columns: 1fr; }
+  .promo-admin-card { flex-direction: column; }
+  .promo-admin-card img { width: 100%; height: 120px; }
+  .admin-toast { left: 16px; right: 16px; bottom: 16px; }
+}
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .dashboard-grid, .analytics-grid { gap: 12px; }
 }

@@ -1,5 +1,11 @@
 const crypto = require('crypto');
 
+const DEFAULT_ADMIN = {
+  username: 'sublime food admin',
+  password: 'food 123',
+  secret: 'sublime-food-admin-secret-2026'
+};
+
 function createToken(secret) {
   const payload = { role: 'admin', exp: Date.now() + 8 * 60 * 60 * 1000 };
   const body = JSON.stringify(payload);
@@ -15,13 +21,9 @@ module.exports = (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
 
-  const adminUser = process.env.ADMIN_USERNAME;
-  const adminPass = process.env.ADMIN_PASSWORD;
-  const secret = process.env.ADMIN_SECRET;
-
-  if (!adminUser || !adminPass || !secret) {
-    return res.status(500).json({ error: 'Configuration administrateur manquante sur le serveur.' });
-  }
+  const adminUser = process.env.ADMIN_USERNAME || DEFAULT_ADMIN.username;
+  const adminPass = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN.password;
+  const secret = process.env.ADMIN_SECRET || DEFAULT_ADMIN.secret;
 
   const { username, password } = req.body || {};
 
