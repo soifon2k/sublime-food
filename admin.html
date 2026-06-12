@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sublime Food - Administration</title>
+  <link rel="icon" href="assets/logo.png" type="image/png">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <!-- ÉCRAN DE CONNEXION ADMIN (accès restreint) -->
+  <div id="admin-login" class="admin-login">
+    <div class="admin-login-card">
+      <img src="assets/logo.png" alt="Sublime Food" class="admin-login-logo">
+      <h1>Administration</h1>
+      <p>Accès réservé aux administrateurs Sublime Food</p>
+      <form id="admin-login-form">
+        <div class="form-group">
+          <label>Identifiant administrateur</label>
+          <input type="text" id="admin-user" autocomplete="username" required placeholder="Votre identifiant">
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" id="admin-pass" autocomplete="current-password" required placeholder="••••••••">
+        </div>
+        <p id="admin-login-error" class="login-error"></p>
+        <button type="submit" class="btn btn-gold btn-block">Se connecter</button>
+      </form>
+      <a href="/" class="back-link">← Retour à l'application</a>
+    </div>
+  </div>
+
+  <div class="admin-layout hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <img src="assets/logo.png" alt="Logo">
+        <div>
+          <strong>SUBLIME FOOD</strong>
+          <span>Administration</span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-link active" data-section="dashboard"><span class="nav-icon">📊</span> Tableau de bord</a>
+        <a href="#" class="nav-link" data-section="products"><span class="nav-icon">🍽️</span> Produits</a>
+        <a href="#" class="nav-link" data-section="categories"><span class="nav-icon">📁</span> Catégories</a>
+        <a href="#" class="nav-link" data-section="orders"><span class="nav-icon">📦</span> Commandes</a>
+        <a href="#" class="nav-link" data-section="deliverers"><span class="nav-icon">🛵</span> Livreurs</a>
+        <a href="#" class="nav-link" data-section="clients"><span class="nav-icon">👥</span> Clients</a>
+        <a href="#" class="nav-link" data-section="promotions"><span class="nav-icon">🏷️</span> Promotions</a>
+        <a href="#" class="nav-link" data-section="payments"><span class="nav-icon">💳</span> Paiements</a>
+        <a href="#" class="nav-link" data-section="analytics"><span class="nav-icon">📈</span> Analytiques</a>
+      </nav>
+      <button type="button" id="btn-logout" class="sidebar-logout">Déconnexion</button>
+      <a href="/" class="sidebar-back">← Retour à l'app</a>
+    </aside>
+
+    <main class="admin-main">
+      <header class="admin-header">
+        <button class="menu-toggle" id="menu-toggle">☰</button>
+        <h1 id="admin-title">Tableau de bord</h1>
+        <div class="admin-user">
+          <span>Administrateur</span>
+          <div class="avatar">A</div>
+        </div>
+      </header>
+
+      <section class="admin-section active" id="sec-dashboard">
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <h3>Commandes récentes</h3>
+            <div class="table-wrap"><table id="recent-orders-table"><thead><tr><th>ID</th><th>Client</th><th>Total</th><th>Statut</th><th>Date</th></tr></thead><tbody></tbody></table></div>
+          </div>
+          <div class="card">
+            <h3>Produits les plus vendus</h3>
+            <div id="top-products-chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section" id="sec-products">
+        <div class="section-toolbar">
+          <input type="search" id="admin-product-search" placeholder="Rechercher un produit...">
+        </div>
+        <div class="table-wrap"><table id="products-table"><thead><tr><th>Image</th><th>Nom</th><th>Catégorie</th><th>Prix (FC)</th><th>Note</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="admin-section" id="sec-categories">
+        <div class="categories-admin" id="categories-admin"></div>
+      </section>
+
+      <section class="admin-section" id="sec-orders">
+        <div class="section-toolbar">
+          <select id="order-filter-status">
+            <option value="all">Tous les statuts</option>
+            <option value="received">Reçue</option>
+            <option value="preparing">En préparation</option>
+            <option value="onway">En route</option>
+            <option value="delivered">Livrée</option>
+          </select>
+        </div>
+        <div class="table-wrap"><table id="orders-table"><thead><tr><th>ID</th><th>Client</th><th>Articles</th><th>Total</th><th>Paiement</th><th>Statut</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="admin-section" id="sec-deliverers">
+        <div class="section-toolbar">
+          <button class="btn btn-gold" id="btn-add-deliverer">+ Ajouter livreur</button>
+        </div>
+        <div class="deliverers-grid" id="deliverers-grid"></div>
+      </section>
+
+      <section class="admin-section" id="sec-clients">
+        <div class="table-wrap"><table id="clients-table"><thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Commandes</th><th>Points</th><th>Badge</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="admin-section" id="sec-promotions">
+        <div class="section-toolbar">
+          <button class="btn btn-gold" id="btn-add-promo">+ Nouvelle promotion</button>
+        </div>
+        <div class="promos-admin" id="promos-admin"></div>
+      </section>
+
+      <section class="admin-section" id="sec-payments">
+        <div class="stats-grid" id="payment-stats"></div>
+        <div class="table-wrap"><table id="payments-table"><thead><tr><th>ID</th><th>Commande</th><th>Méthode</th><th>Montant</th><th>Statut</th><th>Date</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <section class="admin-section" id="sec-analytics">
+        <div class="stats-grid" id="analytics-stats"></div>
+        <div class="analytics-grid">
+          <div class="card"><h3>Revenus journaliers (7 jours)</h3><div class="bar-chart" id="daily-revenue-chart"></div></div>
+          <div class="card"><h3>Revenus mensuels</h3><div class="bar-chart" id="monthly-revenue-chart"></div></div>
+          <div class="card"><h3>Taux de satisfaction</h3><div class="satisfaction-meter" id="satisfaction-meter"></div></div>
+          <div class="card"><h3>Top produits</h3><div id="analytics-top-products"></div></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/admin-auth.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

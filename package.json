@@ -1,0 +1,10 @@
+{
+  "name": "sublime-food",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sublime Food - Application de commande en ligne",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  }
+}
