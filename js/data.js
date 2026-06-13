@@ -12,7 +12,7 @@ const IMG = {
   samoussa: 'menu photo/tacos viande.jpeg',
   samoussa2: 'menu photo/tacos poulet.jpeg',
   pates: 'menu photo/plat fites.jpeg',
-  salade: 'image acceuil.jpeg',
+  salade: 'menu photo/salade.jpg',
   frites: 'menu photo/plat fites.jpeg',
   plantain: 'menu photo/banane plantain.jpeg',
   boulettes: 'menu photo/boulette de viande.jpeg',
