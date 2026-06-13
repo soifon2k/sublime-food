@@ -6,9 +6,9 @@
   const formatPrice = (n) => n.toLocaleString('fr-FR') + ' FC';
 
   const paymentLabels = {
-    'company-mobile': 'Mobile Money entreprise', orange: 'Orange Money', airtel: 'Airtel Money',
-    mpesa: 'M-Pesa', visa: 'Visa', mastercard: 'Mastercard', paypal: 'PayPal',
-    physical: 'Paiement physique', cash: 'À la livraison', 'mobile-money': 'Mobile Money'
+    mpesa: 'M-Pesa',
+    physical: 'Paiement physique',
+    cash: 'Paiement en espèces'
   };
 
   const paymentStatusLabels = {
@@ -438,31 +438,7 @@
     $('#sidebar')?.classList.remove('open');
   }
 
-  async function initAdmin() {
-    const loginScreen = $('#admin-login');
-    const layout = $('.admin-layout');
-
-    const valid = await AdminAuth.verify();
-    if (!valid) {
-      loginScreen.classList.remove('hidden');
-      layout.classList.add('hidden');
-      $('#admin-login-form').onsubmit = async (e) => {
-        e.preventDefault();
-        const err = $('#admin-login-error');
-        err.textContent = '';
-        try {
-          await AdminAuth.login($('#admin-user').value.trim(), $('#admin-pass').value);
-          loginScreen.classList.add('hidden');
-          layout.classList.remove('hidden');
-          showSection('dashboard');
-        } catch (ex) { err.textContent = ex.message; }
-      };
-      return;
-    }
-
-    loginScreen.classList.add('hidden');
-    layout.classList.remove('hidden');
-
+  function setupAdminEvents() {
     $$('.nav-link').forEach(link => link.addEventListener('click', (e) => {
       e.preventDefault();
       showSection(link.dataset.section);
@@ -486,6 +462,34 @@
     $('#btn-add-promo')?.addEventListener('click', addPromotion);
     $('#btn-add-product')?.addEventListener('click', addProduct);
     $('#btn-add-category')?.addEventListener('click', addCategory);
+  }
+
+  async function initAdmin() {
+    const loginScreen = $('#admin-login');
+    const layout = $('.admin-layout');
+
+    setupAdminEvents();
+
+    const valid = await AdminAuth.verify();
+    if (!valid) {
+      loginScreen.classList.remove('hidden');
+      layout.classList.add('hidden');
+      $('#admin-login-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const err = $('#admin-login-error');
+        err.textContent = '';
+        try {
+          await AdminAuth.login($('#admin-user').value.trim(), $('#admin-pass').value);
+          loginScreen.classList.add('hidden');
+          layout.classList.remove('hidden');
+          showSection('dashboard');
+        } catch (ex) { err.textContent = ex.message; }
+      };
+      return;
+    }
+
+    loginScreen.classList.add('hidden');
+    layout.classList.remove('hidden');
     showSection('dashboard');
   }
 

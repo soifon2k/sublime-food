@@ -1,56 +1,53 @@
-const FOOD = (cat, n = 1) => `https://foodish-api.com/images/${cat}/${cat}${n}.jpg`;
-
 const IMG = {
   fallback: 'assets/image-menu.png',
-  pouletFrit: FOOD('butter-chicken', 1),  pouletRoti: FOOD('butter-chicken', 3),
-  pouletRoti2: FOOD('butter-chicken', 5),
-  tacos: FOOD('pizza', 2),
-  tacos2: FOOD('pizza', 4),
-  tacosPoulet: FOOD('biryani', 2),
-  burger: FOOD('burger', 1),
-  shawarma: FOOD('biryani', 4),
-  shawarmaPoulet: FOOD('butter-chicken', 7),
-  samoussa: FOOD('samosa', 1),
-  samoussa2: FOOD('samosa', 3),
-  pates: FOOD('pasta', 1),
-  salade: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&h=400&fit=crop&auto=format&q=80',
-  frites: 'https://images.unsplash.com/photo-1573080496216-bdf810fd1d9d?w=600&h=400&fit=crop&auto=format&q=80',
-  plantain: FOOD('rice', 2),
-  boulettes: FOOD('biryani', 6),
-  gateau: FOOD('dessert', 1),
-  gateau2: FOOD('dessert', 3),
-  cupcake: FOOD('dessert', 5),
-  cookieBlanc: FOOD('dessert', 7),
-  cookieNoir: FOOD('dessert', 9),
-  gaufreChoco: FOOD('dessert', 2),
-  gaufreSpec: FOOD('dessert', 4),
-  crepeNutella: FOOD('dessert', 6),
-  crepeOreo: FOOD('dessert', 8),
-  coca: 'https://images.unsplash.com/photo-1554866585-cd94860890b7?w=600&h=400&fit=crop&auto=format&q=80',
-  fanta: 'https://images.unsplash.com/photo-1624517452908-42d77fdda9a9?w=600&h=400&fit=crop&auto=format&q=80',
-  sprite: 'https://images.unsplash.com/photo-1625772299848-391b6a87ba7b?w=600&h=400&fit=crop&auto=format&q=80',
-  eau: 'https://images.unsplash.com/photo-1548839140-5a7c55420728?w=600&h=400&fit=crop&auto=format&q=80'
+  pouletFrit: 'menu photo/poulet roti.jpeg',
+  pouletRoti: 'menu photo/poulet roti.jpeg',
+  pouletRoti2: 'menu photo/poulet roti.jpeg',
+  tacos: 'menu photo/tacos viande.jpeg',
+  tacos2: 'menu photo/tacos viande.jpeg',
+  tacosPoulet: 'menu photo/tacos poulet.jpeg',
+  burger: 'menu photo/hamberger.jpg',
+  shawarma: 'menu photo/shawarma viande.jpeg',
+  shawarmaPoulet: 'menu photo/shawarma poulet.jpeg',
+  samoussa: 'menu photo/tacos viande.jpeg',
+  samoussa2: 'menu photo/tacos poulet.jpeg',
+  pates: 'menu photo/plat fites.jpeg',
+  salade: 'image acceuil.jpeg',
+  frites: 'menu photo/plat fites.jpeg',
+  plantain: 'menu photo/banane plantain.jpeg',
+  boulettes: 'menu photo/boulette de viande.jpeg',
+  gateau: 'menu photo/gateau d\'anniversaire normal.jpeg',
+  gateau2: 'menu photo/gateaux d\'anniversaire personnalisé .jpeg',
+  cupcake: 'menu photo/cupcakes.jpeg',
+  cookieBlanc: 'menu photo/cookies chocolat blanc.jpeg',
+  cookieNoir: 'menu photo/cookies chocolat noir.jpeg',
+  gaufreChoco: 'menu photo/gaufres chocolat.jpeg',
+  gaufreSpec: 'menu photo/gaufres speculos.jpeg',
+  crepeNutella: 'menu photo/crepes au nutela.jpeg',
+  crepeOreo: 'menu photo/crepe chocolat oreo.jpeg',
+  coca: 'menu photo/coca.jpg',
+  fanta: 'menu photo/fanta.jpg',
+  sprite: 'menu photo/sprite.jpg',
+  eau: 'menu photo/eau mineral.jpg'
 };
 const SUBLIME_DATA = {
   brand: {
     name: 'SUBLIME FOOD',
     slogan: "Le goût de l'excellence à chaque bouchée.",
-    phone: ['0822624705', '0839297545'],
-    whatsapp: ['0839297545', '0822624705'],
+    phone: ['0822624705'],
+    whatsapp: ['0822624705'],
     facebook: 'Sublime Food',
     instagram: 'Sublime Food',
     companyAccounts: {
-      mobileMoney: ['0822624705', '0839297545'],
-      orangeMoney: '0822624705',
-      airtelMoney: '0839297545',
-      note: 'Effectuez votre paiement au numéro de l\'entreprise puis attendez la confirmation.'
+      mpesa: '0822624705',
+      note: 'Envoyez votre paiement via M-Pesa au 0822624705, puis attendez la confirmation de l\'administration.'
     }
   },  imageFallback: IMG.fallback,
   promoCodes: {},
   deliveryFee: 0,
   tvaRate: 0.16,
   categories: [
-    { id: 'plats', name: 'Plats principaux', icon: '🍗', image: 'assets/image-menu.png' },
+    { id: 'plats', name: 'Plats principaux', icon: '🍗', image: 'menu photo/plat fites.jpeg' },
     { id: 'accompagnements', name: 'Accompagnements', icon: '🍟', image: IMG.frites },
     { id: 'desserts', name: 'Desserts & Pâtisserie', icon: '🎂', image: IMG.gateau },
     { id: 'boissons', name: 'Boissons', icon: '🥤', image: IMG.coca }
@@ -91,15 +88,9 @@ const SUBLIME_DATA = {
     { id: 'ea', name: 'Eau minérale', category: 'boissons', price: 500, image: IMG.eau }
   ],
   paymentMethods: [
-    { id: 'company-mobile', name: 'Mobile Money (numéro entreprise)', icon: '📱', needsCompanyInfo: true },
-    { id: 'orange', name: 'Orange Money', icon: '🟠', needsCompanyInfo: true },
-    { id: 'airtel', name: 'Airtel Money', icon: '🔴', needsCompanyInfo: true },
     { id: 'mpesa', name: 'M-Pesa', icon: '💚', needsCompanyInfo: true },
-    { id: 'visa', name: 'Visa', icon: '💳' },
-    { id: 'mastercard', name: 'Mastercard', icon: '💳' },
-    { id: 'paypal', name: 'PayPal', icon: '🅿️' },
     { id: 'physical', name: 'Paiement physique (boutique)', icon: '🏪', needsCompanyInfo: true },
-    { id: 'cash', name: 'Paiement à la livraison', icon: '💵' }
+    { id: 'cash', name: 'Paiement en espèces', icon: '💵' }
   ],  loyaltyBadges: [
     { id: 'bronze', name: 'Bronze', minPoints: 0, color: '#CD7F32' },
     { id: 'silver', name: 'Argent', minPoints: 500, color: '#C0C0C0' },

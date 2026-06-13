@@ -87,20 +87,16 @@
     const acc = b.companyAccounts;
     const physical = mode === 'physical';
     return `<div class="company-payment-box">
-      <h4>${physical ? '🏪 Paiement en boutique' : '💳 Payer via le compte Sublime Food'}</h4>
-      <p>${physical ? 'Rendez-vous chez Sublime Food ou payez via nos numéros entreprise :' : 'Effectuez votre paiement à l\'un de nos numéros entreprise :'}</p>
+      <h4>${physical ? '🏪 Paiement en boutique' : '💚 Payer via M-Pesa'}</h4>
+      <p>${physical ? 'Rendez-vous chez Sublime Food ou payez en espèces au numéro :' : 'Effectuez votre paiement via M-Pesa au numéro :'}</p>
       <div class="company-nums">
         <a href="tel:0822624705" class="company-num">📞 0822624705</a>
-        <a href="tel:0839297545" class="company-num">📞 0839297545</a>
       </div>
       <div class="company-accounts">
-        <p>Orange Money : <strong>${acc.orangeMoney}</strong></p>
-        <p>Airtel Money : <strong>${acc.airtelMoney}</strong></p>
+        <p>M-Pesa : <strong>${acc.mpesa}</strong></p>
       </div>
-      <p class="company-wa">WhatsApp : <a href="https://wa.me/243839297545" target="_blank" rel="noopener">0839297545</a> · <a href="https://wa.me/243822624705" target="_blank" rel="noopener">0822624705</a></p>
-      <p class="company-social">Facebook : <strong>${b.facebook}</strong> · Instagram : <strong>${b.instagram}</strong></p>
       <p class="company-note">${acc.note}</p>
-      <p class="company-note"><em>Après paiement et confirmation par l'admin, votre commande sera préparée.</em></p>
+      <p class="company-note"><em>Après paiement et confirmation par l'administration, votre commande sera préparée.</em></p>
     </div>`;
   }
 
@@ -352,8 +348,8 @@
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">Une fois le paiement confirmé par l'administration, votre commande sera préparée et livrée (30-45 min).</p>
         <div class="company-payment-box" style="margin-bottom:16px;text-align:left">
           <p><strong>Besoin d'aide ?</strong></p>
-          <p>📞 0822624705 · 0839297545</p>
-          <p>💬 WhatsApp : 0839297545 · 0822624705</p>
+          <p>📞 0822624705</p>
+          <p>💬 WhatsApp : 0822624705</p>
         </div>
         <button class="btn btn-primary btn-block" id="co-track">Voir le statut</button>
         <button class="btn btn-secondary btn-block" style="margin-top:8px" id="co-home">Retour à l'accueil</button></div>`
@@ -628,9 +624,9 @@
     const m = text.toLowerCase();
     if (/commande|suivre/.test(m)) return 'Allez dans Profil → Historique commandes pour suivre votre commande, ou utilisez l\'écran Suivi.';
     if (/livraison|délai/.test(m)) return 'La livraison prend 30 à 45 minutes avec suivi GPS en temps réel.';
-    if (/paiement|payer/.test(m)) return 'Payez via les numéros entreprise Sublime Food : 0822624705 ou 0839297545 (Orange Money / Airtel Money). WhatsApp : 0839297545. Après paiement, l\'admin confirme votre commande. Paiement physique en boutique aussi disponible.';
+    if (/paiement|payer/.test(m)) return 'Nous acceptons M-Pesa et paiement en espèces/physique. Envoyez votre paiement au 0822624705 et attendez la confirmation.';
     if (/menu|plat|prix/.test(m)) return 'Consultez l\'onglet Menu pour voir tous nos plats et prix en FC.';
-    return 'Pour une aide personnalisée, appelez le 0822624705 ou 0839297545 (WhatsApp disponible).';
+    return 'Pour une aide personnalisée, appelez le 0822624705 (téléphone/WhatsApp).';
   }
 
   function initChat() {

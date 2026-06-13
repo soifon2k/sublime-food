@@ -20,14 +20,22 @@ const AdminAuth = {
     return username === this.USERNAME && password === this.PASSWORD;
   },
 
+  fetchWithTimeout(url, options = {}, timeout = 2500) {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+    ]);
+  },
+
   async verify() {
     const token = this.getToken();
     if (!token) return false;
     if (token === this.LOCAL_TOKEN) return true;
     try {
-      const res = await fetch('/api/admin/verify', {
+      const res = await this.fetchWithTimeout('/api/admin/verify', {
+        method: 'GET',
         headers: { Authorization: 'Bearer ' + token }
-      });
+      }, 2500);
       if (!res.ok) { this.clearToken(); return false; }
       const data = await res.json();
       return data.valid === true;
@@ -41,11 +49,11 @@ const AdminAuth = {
       throw new Error('Identifiants administrateur incorrects.');
     }
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await this.fetchWithTimeout('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
-      });
+      }, 2500);
       const data = await res.json();
       if (res.ok && data.token) {
         this.setToken(data.token);

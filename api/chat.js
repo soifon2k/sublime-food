@@ -1,14 +1,14 @@
 const SYSTEM_PROMPT = `Tu es l'assistant virtuel de Sublime Food, restaurant de livraison à domicile.
 Tu donnes UNIQUEMENT des conseils utiles aux clients : commandes, menu, livraison, paiement, problèmes.
 Sois poli, concis (max 3 phrases), en français.
-Contacts humains : 0822624705 et 0839297545 (téléphone et WhatsApp).
-Paiements acceptés : Mobile Money, Orange Money, Airtel Money, M-Pesa, Visa, Mastercard, PayPal, paiement à la livraison.
+Contacts humains : 0822624705 (téléphone et WhatsApp).
+Paiements acceptés : M-Pesa, paiement en espèces et paiement physique en boutique.
 Livraison : 30-45 minutes avec suivi en temps réel.
 Ne invente pas de prix : renvoie vers le menu de l'application pour les tarifs exacts.`;
 
 function localAssistant(message, history) {
   const m = message.toLowerCase();
-  const phones = '0822624705 ou 0839297545';
+  const phones = '0822624705';
 
   if (/commande|suivre|statut|où est/.test(m)) {
     return "Pour suivre votre commande, allez dans Profil → Historique commandes, ou utilisez l'écran Suivi après validation. Si besoin, contactez-nous au " + phones + ".";
@@ -16,14 +16,14 @@ function localAssistant(message, history) {
   if (/livraison|délai|temps|arrive/.test(m)) {
     return "La livraison prend généralement 30 à 45 minutes. Vous pouvez suivre le livreur en temps réel depuis l'application après confirmation de commande.";
   }
-  if (/paiement|payer|mobile money|orange|airtel|visa|cash/.test(m)) {
-    return "Nous acceptons Mobile Money, Orange Money, Airtel Money, M-Pesa, Visa, Mastercard, PayPal et le paiement à la livraison. Choisissez votre mode au moment du paiement.";
+  if (/paiement|payer|mpesa|m-pesa|esp[eè]ces|physique/.test(m)) {
+    return "Nous acceptons M-Pesa et paiement en espèces/physique. Envoyez votre paiement au 0822624705 et attendez la confirmation.";
   }
   if (/menu|plat|poulet|tacos|burger|dessert|boisson|prix/.test(m)) {
     return "Consultez l'onglet Menu pour voir tous nos plats, desserts et boissons avec les prix en FC. Les populaires : poulet frit, tacos, hamburger et gâteaux d'anniversaire.";
   }
   if (/problème|erreur|rembours|réclam|plainte|pas reçu/.test(m)) {
-    return "Je suis désolé pour ce désagrément. Décrivez votre numéro de commande et appelez-nous immédiatement au " + phones + " ou via WhatsApp pour une résolution rapide.";
+    return "Je suis désolé pour ce désagrément. Décrivez votre numéro de commande et appelez-nous immédiatement au " + phones + ".";
   }
   if (/compte|connexion|mot de passe|inscription|otp/.test(m)) {
     return "Pour créer un compte, utilisez Inscription avec email et téléphone. Si vous avez oublié votre mot de passe, utilisez « Mot de passe oublié ». Besoin d'aide ? Appelez le " + phones + ".";
