@@ -11,7 +11,7 @@ const IMG = {
   shawarmaPoulet: 'menu photo/shawarma poulet.jpeg',
   samoussa: 'menu photo/tacos viande.jpeg',
   samoussa2: 'menu photo/tacos poulet.jpeg',
-  pates: 'menu photo/plat fites.jpeg',
+  pates: 'menu photo/pate bolognaise.jpg',
   salade: 'menu photo/salade.jpg',
   frites: 'menu photo/plat fites.jpeg',
   plantain: 'menu photo/banane plantain.jpeg',
