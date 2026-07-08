@@ -1,6 +1,6 @@
 const IMG = {
   fallback: 'assets/image-menu.png',
-  pouletFrit: 'menu photo/poulet roti.jpeg',
+  pouletFrit: 'menu photo/Poulet frit 1.jpeg',
   pouletRoti: 'menu photo/poulet roti.jpeg',
   pouletRoti2: 'menu photo/poulet roti.jpeg',
   tacos: 'menu photo/tacos viande.jpeg',
@@ -9,8 +9,8 @@ const IMG = {
   burger: 'menu photo/hamberger.jpg',
   shawarma: 'menu photo/shawarma viande.jpeg',
   shawarmaPoulet: 'menu photo/shawarma poulet.jpeg',
-  samoussa: 'menu photo/samoussa poulet  (1).jpg',
-  samoussa2: 'menu photo/samoussa poulet  (2).jpg',
+  samoussa: 'menu photo/samoussa viande 1.jpeg',
+  samoussa2: 'menu photo/samoussa poulet 1.jpeg',
   pates: 'menu photo/pate bolognaise.jpg',
   salade: 'menu photo/salade.jpg',
   frites: 'menu photo/plat fites.jpeg',
