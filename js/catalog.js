@@ -1,4 +1,65 @@
 const Catalog = {
+  async requestOrdersFromServer() {
+    try {
+      const res = await fetch('/api/orders');
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        localStorage.setItem('sublime_orders', JSON.stringify(data));
+        return data;
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  },
+
+  async syncOrdersToServer(orders) {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders })
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        localStorage.setItem('sublime_orders', JSON.stringify(data));
+        return true;
+      }
+    } catch {
+      // ignore
+    }
+    return false;
+  },
+
+  async getOrders() {
+    const localOrders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+    const serverOrders = await this.requestOrdersFromServer();
+    if (Array.isArray(serverOrders)) return serverOrders;
+    return localOrders;
+  },
+
+  async saveOrders(orders) {
+    localStorage.setItem('sublime_orders', JSON.stringify(orders));
+    await this.syncOrdersToServer(orders);
+  },
+
+  async updateOrder(id, updates) {
+    const orders = await this.getOrders();
+    const idx = orders.findIndex(o => o.id === id);
+    if (idx >= 0) {
+      orders[idx] = { ...orders[idx], ...updates };
+      await this.saveOrders(orders);
+    }
+    return orders[idx];
+  },
+
+  async deleteOrder(id) {
+    const orders = (await this.getOrders()).filter(o => o.id !== id);
+    await this.saveOrders(orders);
+  },
+
   getCategories() {
     try {
       const saved = JSON.parse(localStorage.getItem('sublime_categories'));
@@ -48,28 +109,6 @@ const Catalog = {
     const extras = JSON.parse(localStorage.getItem('sublime_extra_products') || '[]');
     extras.push(product);
     localStorage.setItem('sublime_extra_products', JSON.stringify(extras));
-  },
-
-  getOrders() {
-    return JSON.parse(localStorage.getItem('sublime_orders') || '[]');
-  },
-
-  saveOrders(orders) {
-    localStorage.setItem('sublime_orders', JSON.stringify(orders));
-  },
-
-  updateOrder(id, updates) {
-    const orders = this.getOrders();
-    const idx = orders.findIndex(o => o.id === id);
-    if (idx >= 0) {
-      orders[idx] = { ...orders[idx], ...updates };
-      this.saveOrders(orders);
-    }
-    return orders[idx];
-  },
-
-  deleteOrder(id) {
-    this.saveOrders(this.getOrders().filter(o => o.id !== id));
   },
 
   getUsers() {

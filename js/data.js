@@ -53,6 +53,10 @@ const SUBLIME_DATA = {
     { id: 'boissons', name: 'Boissons', icon: '🥤', image: IMG.coca }
   ],
   products: [
+    { id: 'yaourt', name: 'Yaourt', category: 'desserts', price: 1000, image: 'menu photo/Yaourt .jpeg' },
+    { id: 'panach', name: 'Panach', category: 'desserts', price: 3000, image: 'menu photo/Panach.jpeg' },
+    { id: 'exo', name: 'Exo', category: 'boissons', price: 3500, image: 'menu photo/Exo.jpeg' },
+    { id: 'bavaria', name: 'Bavaria', category: 'boissons', price: 3500, image: 'menu photo/Bavaria.jpeg' },
     { id: 'pf-4', name: 'Poulet frit - 4 morceaux', category: 'plats', price: 12000, image: IMG.pouletFrit },
     { id: 'pf-6', name: 'Poulet frit - 6 morceaux', category: 'plats', price: 18000, image: IMG.pouletFrit },
     { id: 'pf-8', name: 'Poulet frit - 8 morceaux', category: 'plats', price: 24000, image: IMG.pouletFrit },
@@ -73,8 +77,8 @@ const SUBLIME_DATA = {
     { id: 'acc-fri', name: 'Frites', category: 'accompagnements', price: 2500, image: IMG.frites },
     { id: 'acc-ban', name: 'Bananes plantains', category: 'accompagnements', price: 2000, image: IMG.plantain },
     { id: 'acc-boul', name: 'Boulettes de viande', category: 'accompagnements', price: 1500, image: IMG.boulettes },
-    { id: 'gt-n', name: "Gâteau d'anniversaire - Normal", category: 'desserts', price: 25000, priceNote: '20 000 à 30 000 FC', image: IMG.gateau },
-    { id: 'gt-p', name: "Gâteau d'anniversaire - Personnalisé", category: 'desserts', price: 35000, priceNote: '20 à 50 USD', image: IMG.gateau2 },
+    { id: 'gt-n', name: "Gâteau d'anniversaire - Normal", category: 'desserts', price: 25000, priceNote: '20 000 à 35 000 FC', image: IMG.gateau },
+    { id: 'gt-p', name: "Gâteau d'anniversaire - Personnalisé", category: 'desserts', price: 35000, priceNote: '20 à 100 USD', image: IMG.gateau2 },
     { id: 'cup', name: 'Cupcakes', category: 'desserts', price: 1500, image: IMG.cupcake },
     { id: 'ck-bl', name: 'Cookies - Chocolat blanc', category: 'desserts', price: 2000, image: IMG.cookieBlanc },
     { id: 'ck-no', name: 'Cookies - Chocolat noir', category: 'desserts', price: 2000, image: IMG.cookieNoir },

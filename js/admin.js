@@ -31,12 +31,13 @@
     return map[s] || s;
   }
 
-  function countUserOrders(userId) {
-    return Catalog.getOrders().filter(o => o.userId === userId).length;
+  async function countUserOrders(userId) {
+    const orders = await Catalog.getOrders();
+    return orders.filter(o => o.userId === userId).length;
   }
 
-  function computeAnalytics() {
-    const orders = Catalog.getOrders().filter(o => o.paymentStatus === 'confirmed');
+  async function computeAnalytics() {
+    const orders = (await Catalog.getOrders()).filter(o => o.paymentStatus === 'confirmed');
     const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
     const productSales = {};
     orders.forEach(o => o.items?.forEach(i => {
@@ -67,16 +68,16 @@
     const satisfaction = reviews.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
 
     return {
-      totalRevenue, orderCount: Catalog.getOrders().length,
+      totalRevenue, orderCount: (await Catalog.getOrders()).length,
       confirmedCount: orders.length, topProducts, dailyRevenue, monthlyRevenue,
       satisfaction, reviewsCount: reviews.length
     };
   }
 
-  function renderStats() {
-    const a = computeAnalytics();
+  async function renderStats() {
+    const a = await computeAnalytics();
     const users = Catalog.getUsers();
-    const pending = Catalog.getOrders().filter(o => o.paymentStatus === 'pending').length;
+    const pending = (await Catalog.getOrders()).filter(o => o.paymentStatus === 'pending').length;
     $('#stats-grid').innerHTML = [
       { label: "Chiffre d'affaires", value: formatPrice(a.totalRevenue) },
       { label: 'Commandes totales', value: a.orderCount },
@@ -85,8 +86,8 @@
     ].map(s => `<div class="stat-card"><div class="stat-label">${s.label}</div><div class="stat-value">${s.value}</div></div>`).join('');
   }
 
-  function renderRecentOrders() {
-    const orders = Catalog.getOrders().slice(0, 8);
+  async function renderRecentOrders() {
+    const orders = (await Catalog.getOrders()).slice(0, 8);
     const tbody = $('#recent-orders-table tbody');
     if (!orders.length) { tbody.innerHTML = emptyRow(6, 'Aucune commande'); return; }
     tbody.innerHTML = orders.map(o => `<tr>
@@ -96,8 +97,8 @@
       <td>${new Date(o.createdAt).toLocaleDateString('fr-FR')}</td></tr>`).join('');
   }
 
-  function renderTopProducts() {
-    const a = computeAnalytics();
+  async function renderTopProducts() {
+    const a = await computeAnalytics();
     const el = $('#top-products-chart');
     if (!a.topProducts.length) { el.innerHTML = emptyBlock('Aucune vente confirmée'); return; }
     const max = Math.max(...a.topProducts.map(p => p[1]));
@@ -181,9 +182,9 @@
     showAdminToast('Catégorie ajoutée');
   }
 
-  function renderOrders() {
+  async function renderOrders() {
     const filter = $('#order-filter-status')?.value || 'all';
-    let orders = Catalog.getOrders();
+    let orders = await Catalog.getOrders();
     if (filter === 'pending_payment') orders = orders.filter(o => o.paymentStatus === 'pending');
     else if (filter !== 'all') orders = orders.filter(o => o.status === filter);
 
@@ -210,20 +211,20 @@
       Catalog.updateOrder(sel.dataset.id, { status: sel.value, statusIndex: ['received', 'preparing', 'onway', 'delivered'].indexOf(sel.value) });
       showAdminToast('Statut mis à jour');
     });
-    $$('.btn-confirm-pay').forEach(btn => btn.onclick = () => {
-      Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
+    $$('.btn-confirm-pay').forEach(btn => btn.onclick = async () => {
+      await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
       renderOrders();
       showAdminToast('Paiement confirmé — commande activée');
     });
-    $$('.btn-reject-pay').forEach(btn => btn.onclick = () => {
+    $$('.btn-reject-pay').forEach(btn => btn.onclick = async () => {
       if (!confirm('Rejeter ce paiement ?')) return;
-      Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'rejected', status: 'cancelled' });
+      await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'rejected', status: 'cancelled' });
       renderOrders();
       showAdminToast('Paiement rejeté');
     });
-    $$('.btn-del-order').forEach(btn => btn.onclick = () => {
+    $$('.btn-del-order').forEach(btn => btn.onclick = async () => {
       if (!confirm('Supprimer cette commande ?')) return;
-      Catalog.deleteOrder(btn.dataset.id);
+      await Catalog.deleteOrder(btn.dataset.id);
       renderOrders();
       showAdminToast('Commande supprimée');
     });
@@ -273,17 +274,20 @@
     showAdminToast('Livreur ajouté');
   }
 
-  function renderClients() {
+  async function renderClients() {
     const users = Catalog.getUsers();
     const tbody = $('#clients-table tbody');
     if (!users.length) { tbody.innerHTML = emptyRow(7, 'Aucun client'); return; }
-    tbody.innerHTML = users.map(u => {
+    const rows = [];
+    for (const u of users) {
       const badge = SUBLIME_DATA.loyaltyBadges.filter(b => (u.points || 0) >= b.minPoints).pop();
-      return `<tr>
+      const orderCount = await countUserOrders(u.id);
+      rows.push(`<tr>
         <td>${u.name}</td><td>${u.email}</td><td>${u.phone || '—'}</td>
-        <td>${countUserOrders(u.id)}</td><td>${u.points || 0}</td><td>${badge?.name || 'Bronze'}</td>
-        <td><button class="btn btn-sm btn-danger btn-del-client" data-id="${u.id}">Supprimer</button></td></tr>`;
-    }).join('');
+        <td>${orderCount}</td><td>${u.points || 0}</td><td>${badge?.name || 'Bronze'}</td>
+        <td><button class="btn btn-sm btn-danger btn-del-client" data-id="${u.id}">Supprimer</button></td></tr>`);
+    }
+    tbody.innerHTML = rows.join('');
 
     $$('.btn-del-client').forEach(btn => btn.onclick = () => {
       if (!confirm('Supprimer ce client ?')) return;
@@ -338,8 +342,8 @@
     showAdminToast('Produit ajouté');
   }
 
-  function renderPayments() {
-    const orders = Catalog.getOrders();
+  async function renderPayments() {
+    const orders = await Catalog.getOrders();
     const tbody = $('#payments-table tbody');
     if (!orders.length) {
       $('#payment-stats').innerHTML = '';
@@ -364,15 +368,15 @@
         ${o.paymentStatus === 'pending' ? `<button class="btn btn-sm btn-gold btn-confirm-pay" data-id="${o.id}">Confirmer</button>` : '—'}
       </td></tr>`).join('');
 
-    $$('#payments-table .btn-confirm-pay').forEach(btn => btn.onclick = () => {
-      Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0 });
+    $$('#payments-table .btn-confirm-pay').forEach(btn => btn.onclick = async () => {
+      await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0 });
       renderPayments();
       showAdminToast('Paiement confirmé');
     });
   }
 
-  function renderAnalytics() {
-    const a = computeAnalytics();
+  async function renderAnalytics() {
+    const a = await computeAnalytics();
     $('#analytics-stats').innerHTML = `
       <div class="stat-card"><div class="stat-label">CA confirmé</div><div class="stat-value">${formatPrice(a.totalRevenue)}</div></div>
       <div class="stat-card"><div class="stat-label">Commandes</div><div class="stat-value">${a.orderCount}</div></div>
@@ -416,7 +420,7 @@
   }
 
   const sectionRenderers = {
-    dashboard: () => { renderStats(); renderRecentOrders(); renderTopProducts(); },
+    dashboard: async () => { await renderStats(); await renderRecentOrders(); await renderTopProducts(); },
     products: renderProducts, categories: renderCategories, orders: renderOrders,
     deliverers: renderDeliverers, clients: renderClients, promotions: renderPromotions,
     payments: renderPayments, analytics: renderAnalytics
@@ -428,13 +432,13 @@
     promotions: 'Gestion promotions', payments: 'Gestion paiements', analytics: 'Analytiques'
   };
 
-  function showSection(name) {
+  async function showSection(name) {
     $$('.admin-section').forEach(s => s.classList.remove('active'));
     $$('.nav-link').forEach(l => l.classList.remove('active'));
     $(`#sec-${name}`)?.classList.add('active');
     $(`.nav-link[data-section="${name}"]`)?.classList.add('active');
     $('#admin-title').textContent = sectionTitles[name] || name;
-    if (sectionRenderers[name]) sectionRenderers[name]();
+    if (sectionRenderers[name]) await sectionRenderers[name]();
     $('#sidebar')?.classList.remove('open');
   }
 
@@ -482,7 +486,7 @@
           await AdminAuth.login($('#admin-user').value.trim(), $('#admin-pass').value);
           loginScreen.classList.add('hidden');
           layout.classList.remove('hidden');
-          showSection('dashboard');
+          await showSection('dashboard');
         } catch (ex) { err.textContent = ex.message; }
       };
       return;
@@ -490,7 +494,7 @@
 
     loginScreen.classList.add('hidden');
     layout.classList.remove('hidden');
-    showSection('dashboard');
+    await showSection('dashboard');
   }
 
   document.addEventListener('DOMContentLoaded', initAdmin);

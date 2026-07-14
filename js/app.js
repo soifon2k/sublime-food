@@ -377,7 +377,7 @@
     }
   }
 
-  function placeOrder(calc) {
+  async function placeOrder(calc) {
     const user = Auth.getUser();
     const order = {
       id: 'CMD' + Date.now().toString().slice(-6),
@@ -395,9 +395,9 @@
       deliverer: null
     };
     state.activeOrder = order;
-    const orders = Catalog.getOrders();
+    const orders = await Catalog.getOrders();
     orders.unshift(order);
-    Catalog.saveOrders(orders);
+    await Catalog.saveOrders(orders);
     Cart.clear();
     updateCartBadge();
     addNotification('⏳', 'Commande enregistrée', `Commande ${order.id} — en attente de confirmation du paiement.`);
@@ -410,21 +410,21 @@
     const statuses = ['received', 'preparing', 'onway', 'delivered'];
     const messages = ['Commande reçue', 'En préparation', 'Le livreur est en route', 'Commande livrée !'];
     let step = 0;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       step++;
       if (step >= statuses.length) { clearInterval(interval); return; }
       order.status = statuses[step];
       order.statusIndex = step;
-      const orders = Catalog.getOrders();
+      const orders = await Catalog.getOrders();
       const idx = orders.findIndex(o => o.id === order.id);
-      if (idx >= 0) { orders[idx] = order; Catalog.saveOrders(orders); }
+      if (idx >= 0) { orders[idx] = order; await Catalog.saveOrders(orders); }
       addNotification('🛵', messages[step], `Commande ${order.id} : ${messages[step]}`);
       if (state.screen === 'tracking') renderTracking();
     }, 8000);
   }
 
-  function renderTracking() {
-    const orders = Catalog.getOrders();
+  async function renderTracking() {
+    const orders = await Catalog.getOrders();
     const order = state.activeOrder || orders.find(o => o.paymentStatus === 'confirmed') || orders[0];
     if (!order) {
       $('#tracking-content').innerHTML = `<div class="cart-empty"><div class="cart-empty-icon">📦</div><h3>Aucune commande en cours</h3><button class="btn btn-primary" style="margin-top:16px" onclick="navigate('catalog')">Commander</button></div>`;
@@ -437,9 +437,9 @@
         ${companyPaymentHTML(order.payment)}
         <button class="btn btn-secondary btn-block" style="margin-top:16px" onclick="navigate('home')">Retour</button></div>`;
       if (!state._trackPoll) {
-        state._trackPoll = setInterval(() => {
+        state._trackPoll = setInterval(async () => {
           if (state.screen !== 'tracking') { clearInterval(state._trackPoll); state._trackPoll = null; return; }
-          const fresh = Catalog.getOrders().find(o => o.id === order.id);
+          const fresh = (await Catalog.getOrders()).find(o => o.id === order.id);
           if (fresh && fresh.paymentStatus !== 'pending') { clearInterval(state._trackPoll); state._trackPoll = null; state.activeOrder = fresh; renderTracking(); }
         }, 5000);
       }
@@ -488,10 +488,10 @@
     updateNotifBadge();
   }
 
-  function renderProfile() {
+  async function renderProfile() {
     const user = Auth.getUser();
     if (!user) { navigate('auth'); return; }
-    const orders = Catalog.getOrders();
+    const orders = await Catalog.getOrders();
     const badge = SUBLIME_DATA.loyaltyBadges.filter(b => (user.points || 0) >= b.minPoints).pop();
     $('#profile-content').innerHTML = `
       <div class="profile-header">
