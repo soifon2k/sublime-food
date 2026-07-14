@@ -53,10 +53,7 @@ const SUBLIME_DATA = {
     { id: 'boissons', name: 'Boissons', icon: '🥤', image: IMG.coca }
   ],
   products: [
-    { id: 'yaourt', name: 'Yaourt', category: 'desserts', price: 1000, image: 'menu photo/Yaourt .jpeg' },
-    { id: 'panach', name: 'Panach', category: 'desserts', price: 3000, image: 'menu photo/Panach.jpeg' },
-    { id: 'exo', name: 'Exo', category: 'boissons', price: 3500, image: 'menu photo/Exo.jpeg' },
-    { id: 'bavaria', name: 'Bavaria', category: 'boissons', price: 3500, image: 'menu photo/Bavaria.jpeg' },
+    
     { id: 'pf-4', name: 'Poulet frit - 4 morceaux', category: 'plats', price: 12000, image: IMG.pouletFrit },
     { id: 'pf-6', name: 'Poulet frit - 6 morceaux', category: 'plats', price: 18000, image: IMG.pouletFrit },
     { id: 'pf-8', name: 'Poulet frit - 8 morceaux', category: 'plats', price: 24000, image: IMG.pouletFrit },
@@ -89,7 +86,11 @@ const SUBLIME_DATA = {
     { id: 'cc', name: 'Coca-Cola', category: 'boissons', price: 3000, image: IMG.coca },
     { id: 'fa', name: 'Fanta', category: 'boissons', price: 3000, image: IMG.fanta },
     { id: 'sp', name: 'Sprite', category: 'boissons', price: 3000, image: IMG.sprite },
-    { id: 'ea', name: 'Eau minérale', category: 'boissons', price: 500, image: IMG.eau }
+    { id: 'ea', name: 'Eau minérale', category: 'boissons', price: 500, image: IMG.eau },
+    { id: 'yaourt', name: 'Yaourt', category: 'desserts', price: 1000, image: 'menu photo/Yaourt .jpeg' },
+    { id: 'panach', name: 'Panach', category: 'desserts', price: 3000, image: 'menu photo/Panach.jpeg' },
+    { id: 'exo', name: 'Exo', category: 'boissons', price: 3500, image: 'menu photo/Exo.jpeg' },
+    { id: 'bavaria', name: 'Bavaria', category: 'boissons', price: 3500, image: 'menu photo/Bavaria.jpeg' },
   ],
   paymentMethods: [
     { id: 'mpesa', name: 'M-Pesa', icon: '💚', needsCompanyInfo: true },
