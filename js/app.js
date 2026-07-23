@@ -398,6 +398,7 @@
     const orders = await Catalog.getOrders();
     orders.unshift(order);
     await Catalog.saveOrders(orders);
+    await Catalog.syncOrderToServer(order);
     Cart.clear();
     updateCartBadge();
     addNotification('⏳', 'Commande enregistrée', `Commande ${order.id} — en attente de confirmation du paiement.`);

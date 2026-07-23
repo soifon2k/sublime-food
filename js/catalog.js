@@ -4,53 +4,97 @@ const Catalog = {
       const res = await fetch('/api/orders');
       if (!res.ok) return null;
       const data = await res.json();
-      if (Array.isArray(data)) {
-        localStorage.setItem('sublime_orders', JSON.stringify(data));
-        return data;
-      }
+      if (Array.isArray(data)) return data;
     } catch {
       // ignore
     }
     return null;
   },
 
-  async syncOrdersToServer(orders) {
+  mergeOrders(localOrders, serverOrders) {
+    const merged = new Map();
+    serverOrders.forEach(order => {
+      if (order?.id) merged.set(order.id, order);
+    });
+    localOrders.forEach(order => {
+      if (!order?.id) return;
+      if (!merged.has(order.id)) merged.set(order.id, order);
+    });
+    return Array.from(merged.values()).sort((a, b) => {
+      const aDate = new Date(a.createdAt || 0).getTime();
+      const bDate = new Date(b.createdAt || 0).getTime();
+      return bDate - aDate;
+    });
+  },
+
+  ordersEqual(a, b) {
+    if (a.length !== b.length) return false;
+    const aIds = a.map(o => o.id).sort();
+    const bIds = b.map(o => o.id).sort();
+    return aIds.every((id, index) => id === bIds[index]);
+  },
+
+  async syncOrderToServer(order) {
     try {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orders })
+        body: JSON.stringify({ order })
       });
-      if (!res.ok) return false;
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        localStorage.setItem('sublime_orders', JSON.stringify(data));
-        return true;
-      }
+      return res.ok;
     } catch {
-      // ignore
+      return false;
     }
-    return false;
+  },
+
+  async updateOrderOnServer(id, updates) {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, updates })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async deleteOrderOnServer(id) {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
   },
 
   async getOrders() {
     const localOrders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
     const serverOrders = await this.requestOrdersFromServer();
-    if (Array.isArray(serverOrders)) return serverOrders;
+    if (Array.isArray(serverOrders)) {
+      const merged = this.mergeOrders(localOrders, serverOrders);
+      localStorage.setItem('sublime_orders', JSON.stringify(merged));
+      return merged;
+    }
     return localOrders;
   },
 
   async saveOrders(orders) {
     localStorage.setItem('sublime_orders', JSON.stringify(orders));
-    await this.syncOrdersToServer(orders);
   },
 
   async updateOrder(id, updates) {
     const orders = await this.getOrders();
     const idx = orders.findIndex(o => o.id === id);
     if (idx >= 0) {
-      orders[idx] = { ...orders[idx], ...updates };
+      orders[idx] = { ...orders[idx], ...updates, updatedAt: new Date().toISOString() };
       await this.saveOrders(orders);
+      await this.updateOrderOnServer(id, orders[idx]);
     }
     return orders[idx];
   },
@@ -58,6 +102,7 @@ const Catalog = {
   async deleteOrder(id) {
     const orders = (await this.getOrders()).filter(o => o.id !== id);
     await this.saveOrders(orders);
+    await this.deleteOrderOnServer(id);
   },
 
   getCategories() {

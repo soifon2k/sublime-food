@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ORDERS_FILE = '/tmp/sublime-orders.json';
+const ORDERS_FILE = path.resolve(process.cwd(), 'orders.json');
 
 function ensureStore() {
   fs.mkdirSync(path.dirname(ORDERS_FILE), { recursive: true });
