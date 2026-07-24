@@ -1,8 +1,32 @@
 const Catalog = {
+  getDeletedOrderIds() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sublime_deleted_order_ids') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  },
+
+  markOrderDeleted(id) {
+    if (!id) return;
+    const deleted = this.getDeletedOrderIds();
+    if (!deleted.includes(id)) {
+      deleted.push(id);
+      localStorage.setItem('sublime_deleted_order_ids', JSON.stringify(deleted));
+    }
+  },
+
+  filterDeletedOrders(orders) {
+    const deletedIds = new Set(this.getDeletedOrderIds());
+    if (!Array.isArray(orders)) return [];
+    return orders.filter(order => order?.id && !deletedIds.has(order.id));
+  },
+
   getStoredOrders() {
     try {
       const saved = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
-      return Array.isArray(saved) ? saved : [];
+      return this.filterDeletedOrders(Array.isArray(saved) ? saved : []);
     } catch {
       return [];
     }
@@ -31,8 +55,8 @@ const Catalog = {
 
   mergeOrders(localOrders, serverOrders) {
     const merged = new Map();
-    const normalizedServer = this.normalizeOrders(serverOrders);
-    const normalizedLocal = this.normalizeOrders(localOrders);
+    const normalizedServer = this.normalizeOrders(this.filterDeletedOrders(serverOrders));
+    const normalizedLocal = this.normalizeOrders(this.filterDeletedOrders(localOrders));
 
     normalizedServer.forEach(order => {
       if (order?.id) merged.set(order.id, order);
@@ -149,6 +173,8 @@ const Catalog = {
   },
 
   async deleteOrder(id) {
+    this.markOrderDeleted(id);
+
     const currentOrders = this.getStoredOrders();
     const orders = currentOrders.filter(o => o.id !== id);
     await this.saveOrders(orders);
@@ -162,7 +188,7 @@ const Catalog = {
     try {
       const serverOrders = await this.requestOrdersFromServer();
       if (Array.isArray(serverOrders)) {
-        const filteredServerOrders = serverOrders.filter(o => o.id !== id);
+        const filteredServerOrders = this.filterDeletedOrders(serverOrders).filter(o => o.id !== id);
         await this.syncOrdersToServer(filteredServerOrders);
       }
     } catch {
