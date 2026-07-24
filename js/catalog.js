@@ -152,7 +152,13 @@ const Catalog = {
     const currentOrders = this.getStoredOrders();
     const orders = currentOrders.filter(o => o.id !== id);
     await this.saveOrders(orders);
-    await this.deleteOrderOnServer(id);
+
+    try {
+      await this.deleteOrderOnServer(id);
+    } catch {
+      // ignore
+    }
+
     try {
       const serverOrders = await this.requestOrdersFromServer();
       if (Array.isArray(serverOrders)) {
@@ -161,6 +167,11 @@ const Catalog = {
       }
     } catch {
       // ignore
+    }
+
+    const freshLocal = this.getStoredOrders();
+    if (freshLocal.some(o => o.id === id)) {
+      await this.saveOrders(freshLocal.filter(o => o.id !== id));
     }
   },
 
