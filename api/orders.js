@@ -82,7 +82,16 @@ function writeOrders(orders) {
 }
 
 function parseBody(req) {
-  if (req.body && typeof req.body === 'object') return req.body;
+  if (!req || req.body === undefined || req.body === null) return {};
+  if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) return req.body;
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      const text = req.body.toString('utf8');
+      return text ? JSON.parse(text) : {};
+    } catch {
+      return {};
+    }
+  }
   if (typeof req.body === 'string') {
     try { return JSON.parse(req.body); } catch { return {}; }
   }

@@ -23,6 +23,40 @@
     return `<p style="text-align:center;color:#888;padding:40px">${msg}</p>`;
   }
 
+  let adminRefreshTimer = null;
+  let adminRefreshInProgress = false;
+
+  async function refreshAdminViews() {
+    if (adminRefreshInProgress) return;
+    adminRefreshInProgress = true;
+    try {
+      await Promise.all([
+        renderStats(),
+        renderRecentOrders(),
+        renderTopProducts(),
+        renderOrders(),
+        renderPayments(),
+        renderAnalytics()
+      ]);
+    } finally {
+      adminRefreshInProgress = false;
+    }
+  }
+
+  function startAdminAutoRefresh() {
+    if (adminRefreshTimer) clearInterval(adminRefreshTimer);
+    adminRefreshTimer = setInterval(() => {
+      refreshAdminViews();
+    }, 4000);
+  }
+
+  function stopAdminAutoRefresh() {
+    if (adminRefreshTimer) {
+      clearInterval(adminRefreshTimer);
+      adminRefreshTimer = null;
+    }
+  }
+
   function statusLabel(s) {
     const map = {
       awaiting_payment: 'Attente paiement', received: 'Reçue', preparing: 'En préparation',
@@ -213,13 +247,13 @@
     });
     $$('.btn-confirm-pay').forEach(btn => btn.onclick = async () => {
       await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
-      renderOrders();
+      await refreshAdminViews();
       showAdminToast('Paiement confirmé — commande activée');
     });
     $$('.btn-reject-pay').forEach(btn => btn.onclick = async () => {
       if (!confirm('Rejeter ce paiement ?')) return;
       await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'rejected', status: 'cancelled' });
-      renderOrders();
+      await refreshAdminViews();
       showAdminToast('Paiement rejeté');
     });
     $$('.btn-del-order').forEach(btn => btn.onclick = async () => {
@@ -370,7 +404,7 @@
 
     $$('#payments-table .btn-confirm-pay').forEach(btn => btn.onclick = async () => {
       await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0 });
-      renderPayments();
+      await refreshAdminViews();
       showAdminToast('Paiement confirmé');
     });
   }
@@ -455,7 +489,18 @@
       sidebar.classList.remove('open');
     });
     $('#order-filter-status')?.addEventListener('change', renderOrders);
-    $('#btn-logout')?.addEventListener('click', () => AdminAuth.logout());
+    $('#btn-logout')?.addEventListener('click', () => {
+      stopAdminAutoRefresh();
+      AdminAuth.logout();
+    });
+    $('#btn-toggle-admin-pass')?.addEventListener('click', () => {
+      const input = $('#admin-pass');
+      const btn = $('#btn-toggle-admin-pass');
+      if (!input || !btn) return;
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Masquer' : 'Voir';
+    });
     $('#admin-product-search')?.addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase();
       $$('#products-table tbody tr').forEach(row => {
@@ -487,6 +532,7 @@
           loginScreen.classList.add('hidden');
           layout.classList.remove('hidden');
           await showSection('dashboard');
+          startAdminAutoRefresh();
         } catch (ex) { err.textContent = ex.message; }
       };
       return;
@@ -495,6 +541,7 @@
     loginScreen.classList.add('hidden');
     layout.classList.remove('hidden');
     await showSection('dashboard');
+    startAdminAutoRefresh();
   }
 
   document.addEventListener('DOMContentLoaded', initAdmin);
