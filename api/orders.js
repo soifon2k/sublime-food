@@ -1,22 +1,37 @@
 const fs = require('fs');
 const path = require('path');
 
-const ORDERS_FILE = path.resolve(process.cwd(), 'orders.json');
+function getOrdersFilePath() {
+  if (process.env.ORDERS_FILE_PATH) return path.resolve(process.env.ORDERS_FILE_PATH);
+  if (process.env.VERCEL_ENV) return '/tmp/sublime-orders.json';
+  return path.resolve(process.cwd(), 'orders.json');
+}
 
-function ensureStore() {
-  fs.mkdirSync(path.dirname(ORDERS_FILE), { recursive: true });
+const ORDERS_FILE = getOrdersFilePath();
+const FALLBACK_ORDERS_FILE = path.resolve(process.cwd(), 'orders.json');
+
+function ensureStore(filePath = ORDERS_FILE) {
+  const dir = path.dirname(filePath);
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 function readOrders() {
-  try {
-    ensureStore();
-    if (!fs.existsSync(ORDERS_FILE)) return [];
-    const raw = fs.readFileSync(ORDERS_FILE, 'utf8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  const candidates = [ORDERS_FILE];
+  if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
+  if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
+
+  for (const candidate of candidates) {
+    try {
+      ensureStore(candidate);
+      if (!fs.existsSync(candidate)) continue;
+      const raw = fs.readFileSync(candidate, 'utf8');
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      // ignore and try the next candidate
+    }
   }
+  return [];
 }
 
 function normalizeOrders(orders) {
@@ -50,8 +65,19 @@ function mergeOrders(existingOrders, incomingOrders) {
 
 function writeOrders(orders) {
   const normalized = normalizeOrders(orders);
-  ensureStore();
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify(normalized, null, 2));
+  const candidates = [ORDERS_FILE];
+  if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
+  if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
+
+  for (const candidate of candidates) {
+    try {
+      ensureStore(candidate);
+      fs.writeFileSync(candidate, JSON.stringify(normalized, null, 2));
+      return normalized;
+    } catch {
+      // continue to next candidate
+    }
+  }
   return normalized;
 }
 
