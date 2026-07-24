@@ -13,6 +13,10 @@ function createToken(secret) {
   return Buffer.from(JSON.stringify({ payload, sig })).toString('base64');
 }
 
+function isPhoneIdentifier(value) {
+  return /^(\+\d{1,3})?[\s.-]?\d{8,15}$/.test((value || '').trim());
+}
+
 module.exports = (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -26,8 +30,12 @@ module.exports = (req, res) => {
   const secret = process.env.ADMIN_SECRET || DEFAULT_ADMIN.secret;
 
   const { username, password } = req.body || {};
+  const normalizedUsername = String(username || '').trim();
+  const normalizedPassword = String(password || '').trim();
+  const isAdminUser = normalizedUsername === adminUser && normalizedPassword === adminPass;
+  const isPhoneAdmin = isPhoneIdentifier(normalizedUsername) && normalizedPassword === adminPass;
 
-  if (username !== adminUser || password !== adminPass) {
+  if (!isAdminUser && !isPhoneAdmin) {
     return res.status(401).json({ error: 'Identifiants administrateur incorrects.' });
   }
 

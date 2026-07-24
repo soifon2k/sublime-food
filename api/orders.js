@@ -19,10 +19,40 @@ function readOrders() {
   }
 }
 
+function normalizeOrders(orders) {
+  if (!Array.isArray(orders)) return [];
+  return orders.filter(Boolean).sort((a, b) => {
+    const aDate = new Date(a.createdAt || 0).getTime();
+    const bDate = new Date(b.createdAt || 0).getTime();
+    return bDate - aDate;
+  });
+}
+
+function mergeOrders(existingOrders, incomingOrders) {
+  const merged = new Map();
+  normalizeOrders(existingOrders).forEach((order) => {
+    if (order?.id) merged.set(order.id, order);
+  });
+  normalizeOrders(incomingOrders).forEach((order) => {
+    if (!order?.id) return;
+    if (merged.has(order.id)) {
+      merged.set(order.id, { ...merged.get(order.id), ...order });
+    } else {
+      merged.set(order.id, order);
+    }
+  });
+  return Array.from(merged.values()).sort((a, b) => {
+    const aDate = new Date(a.createdAt || 0).getTime();
+    const bDate = new Date(b.createdAt || 0).getTime();
+    return bDate - aDate;
+  });
+}
+
 function writeOrders(orders) {
+  const normalized = normalizeOrders(orders);
   ensureStore();
-  fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2));
-  return orders;
+  fs.writeFileSync(ORDERS_FILE, JSON.stringify(normalized, null, 2));
+  return normalized;
 }
 
 function parseBody(req) {
@@ -48,11 +78,10 @@ module.exports = async (req, res) => {
 
   if (req.method === 'POST') {
     if (Array.isArray(body.orders)) {
-      return res.status(200).json(writeOrders(body.orders));
+      return res.status(200).json(writeOrders(mergeOrders(readOrders(), body.orders)));
     }
     if (body.order && typeof body.order === 'object') {
-      const orders = readOrders();
-      orders.unshift(body.order);
+      const orders = mergeOrders(readOrders(), [body.order]);
       return res.status(200).json(writeOrders(orders));
     }
     return res.status(400).json({ error: 'Données de commande requises.' });
@@ -64,7 +93,7 @@ module.exports = async (req, res) => {
     const orders = readOrders();
     const idx = orders.findIndex((o) => o.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Commande introuvable.' });
-    orders[idx] = { ...orders[idx], ...updates };
+    orders[idx] = { ...orders[idx], ...updates, updatedAt: new Date().toISOString() };
     return res.status(200).json(writeOrders(orders));
   }
 

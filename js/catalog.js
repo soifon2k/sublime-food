@@ -1,4 +1,22 @@
 const Catalog = {
+  getStoredOrders() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  },
+
+  normalizeOrders(orders) {
+    if (!Array.isArray(orders)) return [];
+    return orders.filter(Boolean).sort((a, b) => {
+      const aDate = new Date(a.createdAt || 0).getTime();
+      const bDate = new Date(b.createdAt || 0).getTime();
+      return bDate - aDate;
+    });
+  },
+
   async requestOrdersFromServer() {
     try {
       const res = await fetch('/api/orders');
@@ -13,13 +31,21 @@ const Catalog = {
 
   mergeOrders(localOrders, serverOrders) {
     const merged = new Map();
-    serverOrders.forEach(order => {
+    const normalizedServer = this.normalizeOrders(serverOrders);
+    const normalizedLocal = this.normalizeOrders(localOrders);
+
+    normalizedServer.forEach(order => {
       if (order?.id) merged.set(order.id, order);
     });
-    localOrders.forEach(order => {
+    normalizedLocal.forEach(order => {
       if (!order?.id) return;
-      if (!merged.has(order.id)) merged.set(order.id, order);
+      if (merged.has(order.id)) {
+        merged.set(order.id, { ...merged.get(order.id), ...order });
+      } else {
+        merged.set(order.id, order);
+      }
     });
+
     return Array.from(merged.values()).sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime();
       const bDate = new Date(b.createdAt || 0).getTime();
@@ -40,6 +66,19 @@ const Catalog = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order })
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async syncOrdersToServer(orders) {
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orders: this.normalizeOrders(orders) })
       });
       return res.ok;
     } catch {
@@ -74,18 +113,28 @@ const Catalog = {
   },
 
   async getOrders() {
-    const localOrders = JSON.parse(localStorage.getItem('sublime_orders') || '[]');
+    const localOrders = this.getStoredOrders();
     const serverOrders = await this.requestOrdersFromServer();
+    const hasLocalOrders = localOrders.length > 0;
+    const hasServerOrders = Array.isArray(serverOrders) && serverOrders.length > 0;
+
     if (Array.isArray(serverOrders)) {
       const merged = this.mergeOrders(localOrders, serverOrders);
-      localStorage.setItem('sublime_orders', JSON.stringify(merged));
+      if (merged.length) {
+        this.saveOrders(merged);
+        if (hasLocalOrders && !hasServerOrders) {
+          await this.syncOrdersToServer(merged);
+        }
+      }
       return merged;
     }
-    return localOrders;
+
+    return hasLocalOrders ? localOrders : [];
   },
 
   async saveOrders(orders) {
-    localStorage.setItem('sublime_orders', JSON.stringify(orders));
+    const normalized = this.normalizeOrders(orders);
+    localStorage.setItem('sublime_orders', JSON.stringify(normalized));
   },
 
   async updateOrder(id, updates) {

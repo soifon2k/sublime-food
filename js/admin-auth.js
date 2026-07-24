@@ -16,8 +16,17 @@ const AdminAuth = {
     sessionStorage.removeItem(this.TOKEN_KEY);
   },
 
+  isPhoneIdentifier(value) {
+    return /^(\+\d{1,3})?[\s.-]?\d{8,15}$/.test((value || '').trim());
+  },
+
   checkCredentials(username, password) {
-    return username === this.USERNAME && password === this.PASSWORD;
+    const normalizedUsername = (username || '').trim();
+    const normalizedPassword = (password || '').trim();
+
+    if (!normalizedUsername || !normalizedPassword) return false;
+    if (normalizedUsername === this.USERNAME && normalizedPassword === this.PASSWORD) return true;
+    return this.isPhoneIdentifier(normalizedUsername) && normalizedPassword === this.PASSWORD;
   },
 
   fetchWithTimeout(url, options = {}, timeout = 2500) {
