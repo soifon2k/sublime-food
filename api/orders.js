@@ -15,6 +15,16 @@ function ensureStore(filePath = ORDERS_FILE) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function readRawStore(filePath) {
+  try {
+    ensureStore(filePath);
+    if (!fs.existsSync(filePath)) return null;
+    return fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
 function normalizeOrders(orders) {
   if (!Array.isArray(orders)) return [];
   return orders.filter(Boolean).sort((a, b) => {
@@ -40,11 +50,9 @@ function readStoreState() {
   if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
 
   for (const candidate of candidates) {
+    const raw = readRawStore(candidate);
+    if (!raw || !raw.trim()) continue;
     try {
-      ensureStore(candidate);
-      if (!fs.existsSync(candidate)) continue;
-      const raw = fs.readFileSync(candidate, 'utf8');
-      if (!raw.trim()) return { orders: [], deletedOrderIds: [] };
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return { orders: normalizeOrders(parsed), deletedOrderIds: [] };
@@ -91,18 +99,24 @@ function writeOrders(orders, deletedIds = []) {
   const normalizedOrders = normalizeOrders(orders);
   const normalizedDeletedIds = normalizeDeletedIds(deletedIds);
   const payload = { orders: normalizedOrders, deletedOrderIds: normalizedDeletedIds };
+  const serialized = JSON.stringify(payload, null, 2);
   const candidates = [ORDERS_FILE];
   if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
   if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
 
+  let wrote = false;
   for (const candidate of candidates) {
     try {
       ensureStore(candidate);
-      fs.writeFileSync(candidate, JSON.stringify(payload, null, 2));
-      return payload;
+      fs.writeFileSync(candidate, serialized);
+      wrote = true;
     } catch {
       // continue to next candidate
     }
+  }
+  if (!wrote) {
+    ensureStore(ORDERS_FILE);
+    fs.writeFileSync(ORDERS_FILE, serialized);
   }
   return payload;
 }
