@@ -129,14 +129,16 @@ module.exports = async (req, res) => {
     const idx = orders.findIndex((o) => o.id === id);
     if (idx === -1) return res.status(404).json({ error: 'Commande introuvable.' });
     orders[idx] = { ...orders[idx], ...updates, updatedAt: new Date().toISOString() };
-    return res.status(200).json(writeOrders(orders));
+    const stored = writeOrders(orders);
+    return res.status(200).json(stored);
   }
 
   if (req.method === 'DELETE') {
     const { id } = body;
     if (!id) return res.status(400).json({ error: 'Identifiant de commande requis.' });
     const orders = readOrders().filter((o) => o.id !== id);
-    return res.status(200).json(writeOrders(orders));
+    const stored = writeOrders(orders);
+    return res.status(200).json(stored);
   }
 
   return res.status(405).json({ error: 'Méthode non autorisée.' });
