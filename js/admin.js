@@ -47,7 +47,7 @@
     if (adminRefreshTimer) clearInterval(adminRefreshTimer);
     adminRefreshTimer = setInterval(() => {
       refreshAdminViews();
-    }, 4000);
+    }, 1000);
   }
 
   function stopAdminAutoRefresh() {
@@ -274,7 +274,7 @@
     $$('.btn-del-order').forEach(btn => btn.onclick = async () => {
       if (!confirm('Supprimer cette commande ?')) return;
       await Catalog.deleteOrder(btn.dataset.id);
-      renderOrders();
+      await refreshAdminViews();
       showAdminToast('Commande supprimée');
     });
   }

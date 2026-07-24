@@ -120,7 +120,7 @@ const Catalog = {
 
     if (Array.isArray(serverOrders)) {
       const merged = this.mergeOrders(localOrders, serverOrders);
-      if (merged.length) {
+      if (merged.length || hasLocalOrders || hasServerOrders) {
         this.saveOrders(merged);
         if (hasLocalOrders && !hasServerOrders) {
           await this.syncOrdersToServer(merged);
@@ -149,9 +149,19 @@ const Catalog = {
   },
 
   async deleteOrder(id) {
-    const orders = (await this.getOrders()).filter(o => o.id !== id);
+    const currentOrders = this.getStoredOrders();
+    const orders = currentOrders.filter(o => o.id !== id);
     await this.saveOrders(orders);
     await this.deleteOrderOnServer(id);
+    try {
+      const serverOrders = await this.requestOrdersFromServer();
+      if (Array.isArray(serverOrders)) {
+        const filteredServerOrders = serverOrders.filter(o => o.id !== id);
+        await this.syncOrdersToServer(filteredServerOrders);
+      }
+    } catch {
+      // ignore
+    }
   },
 
   getCategories() {
