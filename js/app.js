@@ -468,7 +468,9 @@
   }
 
   function addNotification(icon, title, body) {
-    state.notifications.unshift({ icon, title, body, time: new Date().toISOString(), unread: true });
+    const current = JSON.parse(localStorage.getItem('sublime_notifications') || '[]');
+    current.unshift({ icon, title, body, time: new Date().toISOString(), unread: true });
+    state.notifications = current;
     localStorage.setItem('sublime_notifications', JSON.stringify(state.notifications));
     updateNotifBadge();
   }

@@ -258,7 +258,8 @@
           body: `Votre commande ${orderId} a été confirmée. Elle est maintenant en préparation.`,
           time: new Date().toISOString(),
           unread: true,
-          orderId
+          orderId,
+          userId: order.userId
         });
         localStorage.setItem('sublime_notifications', JSON.stringify(notifications));
       }
@@ -430,7 +431,8 @@
           body: `Votre commande ${orderId} a été confirmée. Elle est maintenant en préparation.`,
           time: new Date().toISOString(),
           unread: true,
-          orderId
+          orderId,
+          userId: order.userId
         });
         localStorage.setItem('sublime_notifications', JSON.stringify(notifications));
       }
