@@ -246,7 +246,22 @@
       showAdminToast('Statut mis à jour');
     });
     $$('.btn-confirm-pay').forEach(btn => btn.onclick = async () => {
-      await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
+      const orderId = btn.dataset.id;
+      const orders = await Catalog.getOrders();
+      const order = orders.find(o => o.id === orderId);
+      await Catalog.updateOrder(orderId, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
+      if (order?.userId) {
+        const notifications = JSON.parse(localStorage.getItem('sublime_notifications') || '[]');
+        notifications.unshift({
+          icon: '✅',
+          title: 'Paiement confirmé',
+          body: `Votre commande ${orderId} a été confirmée. Elle est maintenant en préparation.`,
+          time: new Date().toISOString(),
+          unread: true,
+          orderId
+        });
+        localStorage.setItem('sublime_notifications', JSON.stringify(notifications));
+      }
       await refreshAdminViews();
       showAdminToast('Paiement confirmé — commande activée');
     });
@@ -403,7 +418,22 @@
       </td></tr>`).join('');
 
     $$('#payments-table .btn-confirm-pay').forEach(btn => btn.onclick = async () => {
-      await Catalog.updateOrder(btn.dataset.id, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0 });
+      const orderId = btn.dataset.id;
+      const orders = await Catalog.getOrders();
+      const order = orders.find(o => o.id === orderId);
+      await Catalog.updateOrder(orderId, { paymentStatus: 'confirmed', status: 'received', statusIndex: 0, confirmedAt: new Date().toISOString() });
+      if (order?.userId) {
+        const notifications = JSON.parse(localStorage.getItem('sublime_notifications') || '[]');
+        notifications.unshift({
+          icon: '✅',
+          title: 'Paiement confirmé',
+          body: `Votre commande ${orderId} a été confirmée. Elle est maintenant en préparation.`,
+          time: new Date().toISOString(),
+          unread: true,
+          orderId
+        });
+        localStorage.setItem('sublime_notifications', JSON.stringify(notifications));
+      }
       await refreshAdminViews();
       showAdminToast('Paiement confirmé');
     });
