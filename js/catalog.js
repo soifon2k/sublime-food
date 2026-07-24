@@ -143,21 +143,20 @@ const Catalog = {
     const hasServerOrders = Array.isArray(serverOrders) && serverOrders.length > 0;
 
     if (Array.isArray(serverOrders)) {
-      const merged = this.mergeOrders(localOrders, serverOrders);
-      if (merged.length || hasLocalOrders || hasServerOrders) {
-        this.saveOrders(merged);
-        if (hasLocalOrders && !hasServerOrders) {
-          await this.syncOrdersToServer(merged);
-        }
+      const normalizedServer = this.normalizeOrders(this.filterDeletedOrders(serverOrders));
+      const resolvedOrders = hasServerOrders ? normalizedServer : (hasLocalOrders ? localOrders : []);
+      this.saveOrders(resolvedOrders);
+      if (!hasServerOrders && hasLocalOrders) {
+        await this.syncOrdersToServer(resolvedOrders);
       }
-      return merged;
+      return resolvedOrders;
     }
 
     return hasLocalOrders ? localOrders : [];
   },
 
   async saveOrders(orders) {
-    const normalized = this.normalizeOrders(orders);
+    const normalized = this.normalizeOrders(this.filterDeletedOrders(orders));
     localStorage.setItem('sublime_orders', JSON.stringify(normalized));
   },
 

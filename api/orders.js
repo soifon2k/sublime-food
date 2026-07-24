@@ -15,25 +15,6 @@ function ensureStore(filePath = ORDERS_FILE) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function readOrders() {
-  const candidates = [ORDERS_FILE];
-  if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
-  if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
-
-  for (const candidate of candidates) {
-    try {
-      ensureStore(candidate);
-      if (!fs.existsSync(candidate)) continue;
-      const raw = fs.readFileSync(candidate, 'utf8');
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      // ignore and try the next candidate
-    }
-  }
-  return [];
-}
-
 function normalizeOrders(orders) {
   if (!Array.isArray(orders)) return [];
   return orders.filter(Boolean).sort((a, b) => {
@@ -43,28 +24,17 @@ function normalizeOrders(orders) {
   });
 }
 
-function mergeOrders(existingOrders, incomingOrders) {
-  const merged = new Map();
-  normalizeOrders(existingOrders).forEach((order) => {
-    if (order?.id) merged.set(order.id, order);
-  });
-  normalizeOrders(incomingOrders).forEach((order) => {
-    if (!order?.id) return;
-    if (merged.has(order.id)) {
-      merged.set(order.id, { ...merged.get(order.id), ...order });
-    } else {
-      merged.set(order.id, order);
-    }
-  });
-  return Array.from(merged.values()).sort((a, b) => {
-    const aDate = new Date(a.createdAt || 0).getTime();
-    const bDate = new Date(b.createdAt || 0).getTime();
-    return bDate - aDate;
-  });
+function normalizeDeletedIds(ids) {
+  if (!Array.isArray(ids)) return [];
+  return [...new Set(ids.filter(Boolean).map((id) => String(id)))];
 }
 
-function writeOrders(orders) {
-  const normalized = normalizeOrders(orders);
+function filterDeletedOrders(orders, deletedIds = []) {
+  const deleted = new Set(normalizeDeletedIds(deletedIds));
+  return normalizeOrders(orders).filter((order) => order?.id && !deleted.has(String(order.id)));
+}
+
+function readStoreState() {
   const candidates = [ORDERS_FILE];
   if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
   if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
@@ -72,13 +42,73 @@ function writeOrders(orders) {
   for (const candidate of candidates) {
     try {
       ensureStore(candidate);
-      fs.writeFileSync(candidate, JSON.stringify(normalized, null, 2));
-      return normalized;
+      if (!fs.existsSync(candidate)) continue;
+      const raw = fs.readFileSync(candidate, 'utf8');
+      if (!raw.trim()) return { orders: [], deletedOrderIds: [] };
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return { orders: normalizeOrders(parsed), deletedOrderIds: [] };
+      }
+      if (parsed && typeof parsed === 'object') {
+        return {
+          orders: filterDeletedOrders(parsed.orders || [], parsed.deletedOrderIds || []),
+          deletedOrderIds: normalizeDeletedIds(parsed.deletedOrderIds || [])
+        };
+      }
+    } catch {
+      // ignore and try the next candidate
+    }
+  }
+  return { orders: [], deletedOrderIds: [] };
+}
+
+function mergeOrders(existingOrders, incomingOrders, deletedIds = []) {
+  const merged = new Map();
+  const normalizedExisting = filterDeletedOrders(existingOrders, deletedIds);
+  const normalizedIncoming = filterDeletedOrders(incomingOrders, deletedIds);
+
+  normalizedExisting.forEach((order) => {
+    if (order?.id) merged.set(String(order.id), order);
+  });
+  normalizedIncoming.forEach((order) => {
+    if (!order?.id) return;
+    const key = String(order.id);
+    if (merged.has(key)) {
+      merged.set(key, { ...merged.get(key), ...order });
+    } else {
+      merged.set(key, order);
+    }
+  });
+
+  return Array.from(merged.values()).sort((a, b) => {
+    const aDate = new Date(a.createdAt || 0).getTime();
+    const bDate = new Date(b.createdAt || 0).getTime();
+    return bDate - aDate;
+  });
+}
+
+function writeOrders(orders, deletedIds = []) {
+  const normalizedOrders = normalizeOrders(orders);
+  const normalizedDeletedIds = normalizeDeletedIds(deletedIds);
+  const payload = { orders: normalizedOrders, deletedOrderIds: normalizedDeletedIds };
+  const candidates = [ORDERS_FILE];
+  if (ORDERS_FILE !== FALLBACK_ORDERS_FILE) candidates.push(FALLBACK_ORDERS_FILE);
+  if (ORDERS_FILE !== '/tmp/sublime-orders.json') candidates.push('/tmp/sublime-orders.json');
+
+  for (const candidate of candidates) {
+    try {
+      ensureStore(candidate);
+      fs.writeFileSync(candidate, JSON.stringify(payload, null, 2));
+      return payload;
     } catch {
       // continue to next candidate
     }
   }
-  return normalized;
+  return payload;
+}
+
+function readOrders() {
+  return readStoreState().orders;
 }
 
 function parseBody(req) {
@@ -112,12 +142,16 @@ module.exports = async (req, res) => {
   const body = parseBody(req);
 
   if (req.method === 'POST') {
+    const state = readStoreState();
     if (Array.isArray(body.orders)) {
-      return res.status(200).json(writeOrders(mergeOrders(readOrders(), body.orders)));
+      const merged = mergeOrders(state.orders, body.orders, state.deletedOrderIds);
+      const stored = writeOrders(merged, state.deletedOrderIds);
+      return res.status(200).json(stored.orders);
     }
     if (body.order && typeof body.order === 'object') {
-      const orders = mergeOrders(readOrders(), [body.order]);
-      return res.status(200).json(writeOrders(orders));
+      const merged = mergeOrders(state.orders, [body.order], state.deletedOrderIds);
+      const stored = writeOrders(merged, state.deletedOrderIds);
+      return res.status(200).json(stored.orders);
     }
     return res.status(400).json({ error: 'Données de commande requises.' });
   }
@@ -125,20 +159,24 @@ module.exports = async (req, res) => {
   if (req.method === 'PUT') {
     const { id, updates } = body;
     if (!id) return res.status(400).json({ error: 'Identifiant de commande requis.' });
-    const orders = readOrders();
-    const idx = orders.findIndex((o) => o.id === id);
+    const state = readStoreState();
+    const orders = state.orders.slice();
+    const idx = orders.findIndex((o) => String(o.id) === String(id));
     if (idx === -1) return res.status(404).json({ error: 'Commande introuvable.' });
     orders[idx] = { ...orders[idx], ...updates, updatedAt: new Date().toISOString() };
-    const stored = writeOrders(orders);
-    return res.status(200).json(stored);
+    const stored = writeOrders(orders, state.deletedOrderIds);
+    return res.status(200).json(stored.orders);
   }
 
   if (req.method === 'DELETE') {
     const { id } = body;
     if (!id) return res.status(400).json({ error: 'Identifiant de commande requis.' });
-    const orders = readOrders().filter((o) => o.id !== id);
-    const stored = writeOrders(orders);
-    return res.status(200).json(stored);
+    const state = readStoreState();
+    const deletedOrderId = String(id);
+    const deletedIds = normalizeDeletedIds([...state.deletedOrderIds, deletedOrderId]);
+    const orders = filterDeletedOrders(state.orders, deletedIds);
+    const stored = writeOrders(orders, deletedIds);
+    return res.status(200).json(stored.orders);
   }
 
   return res.status(405).json({ error: 'Méthode non autorisée.' });
