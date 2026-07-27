@@ -1,18 +1,23 @@
 const Catalog = {
+  orderId(id) {
+    return id == null ? '' : String(id);
+  },
+
   getDeletedOrderIds() {
     try {
       const saved = JSON.parse(localStorage.getItem('sublime_deleted_order_ids') || '[]');
-      return Array.isArray(saved) ? saved : [];
+      return Array.isArray(saved) ? saved.map((id) => this.orderId(id)).filter(Boolean) : [];
     } catch {
       return [];
     }
   },
 
   markOrderDeleted(id) {
-    if (!id) return;
+    const orderId = this.orderId(id);
+    if (!orderId) return;
     const deleted = this.getDeletedOrderIds();
-    if (!deleted.includes(id)) {
-      deleted.push(id);
+    if (!deleted.includes(orderId)) {
+      deleted.push(orderId);
       localStorage.setItem('sublime_deleted_order_ids', JSON.stringify(deleted));
     }
   },
@@ -20,7 +25,7 @@ const Catalog = {
   filterDeletedOrders(orders) {
     const deletedIds = new Set(this.getDeletedOrderIds());
     if (!Array.isArray(orders)) return [];
-    return orders.filter(order => order?.id && !deletedIds.has(order.id));
+    return orders.filter((order) => order?.id && !deletedIds.has(this.orderId(order.id)));
   },
 
   getStoredOrders() {
@@ -53,22 +58,29 @@ const Catalog = {
     return null;
   },
 
+  pickNewerOrder(a, b) {
+    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime();
+    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime();
+    return aTime >= bTime ? { ...b, ...a } : { ...a, ...b };
+  },
+
   mergeOrders(localOrders, serverOrders) {
     const merged = new Map();
     const normalizedServer = this.normalizeOrders(this.filterDeletedOrders(serverOrders));
     const normalizedLocal = this.normalizeOrders(this.filterDeletedOrders(localOrders));
 
-    normalizedServer.forEach(order => {
-      if (order?.id) merged.set(order.id, order);
-    });
-    normalizedLocal.forEach(order => {
+    const upsert = (order) => {
       if (!order?.id) return;
-      if (merged.has(order.id)) {
-        merged.set(order.id, { ...merged.get(order.id), ...order });
+      const key = this.orderId(order.id);
+      if (merged.has(key)) {
+        merged.set(key, this.pickNewerOrder(merged.get(key), order));
       } else {
-        merged.set(order.id, order);
+        merged.set(key, order);
       }
-    });
+    };
+
+    normalizedServer.forEach(upsert);
+    normalizedLocal.forEach(upsert);
 
     return Array.from(merged.values()).sort((a, b) => {
       const aDate = new Date(a.createdAt || 0).getTime();
@@ -79,9 +91,13 @@ const Catalog = {
 
   ordersEqual(a, b) {
     if (a.length !== b.length) return false;
-    const aIds = a.map(o => o.id).sort();
-    const bIds = b.map(o => o.id).sort();
-    return aIds.every((id, index) => id === bIds[index]);
+    const mapB = new Map(b.map((order) => [this.orderId(order.id), order]));
+    return a.every((order) => {
+      const other = mapB.get(this.orderId(order.id));
+      if (!other) return false;
+      const stamp = (entry) => entry.updatedAt || entry.createdAt || '';
+      return stamp(order) === stamp(other);
+    });
   },
 
   async syncOrderToServer(order) {
@@ -102,7 +118,10 @@ const Catalog = {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orders: this.normalizeOrders(orders) })
+        body: JSON.stringify({
+          orders: this.normalizeOrders(orders),
+          deletedOrderIds: this.getDeletedOrderIds()
+        })
       });
       return res.ok;
     } catch {
@@ -139,20 +158,21 @@ const Catalog = {
   async getOrders() {
     const localOrders = this.getStoredOrders();
     const serverOrders = await this.requestOrdersFromServer();
-    const hasLocalOrders = localOrders.length > 0;
-    const hasServerOrders = Array.isArray(serverOrders) && serverOrders.length > 0;
 
-    if (Array.isArray(serverOrders)) {
-      const normalizedServer = this.normalizeOrders(this.filterDeletedOrders(serverOrders));
-      const resolvedOrders = hasServerOrders ? normalizedServer : (hasLocalOrders ? localOrders : []);
-      this.saveOrders(resolvedOrders);
-      if (!hasServerOrders && hasLocalOrders) {
-        await this.syncOrdersToServer(resolvedOrders);
-      }
-      return resolvedOrders;
+    if (!Array.isArray(serverOrders)) {
+      return localOrders;
     }
 
-    return hasLocalOrders ? localOrders : [];
+    const merged = this.mergeOrders(localOrders, serverOrders);
+    const serverSnapshot = this.normalizeOrders(this.filterDeletedOrders(serverOrders));
+
+    await this.saveOrders(merged);
+
+    if (!this.ordersEqual(merged, serverSnapshot)) {
+      await this.syncOrdersToServer(merged);
+    }
+
+    return merged;
   },
 
   async saveOrders(orders) {
@@ -161,8 +181,9 @@ const Catalog = {
   },
 
   async updateOrder(id, updates) {
+    const orderId = this.orderId(id);
     const orders = await this.getOrders();
-    const idx = orders.findIndex(o => o.id === id);
+    const idx = orders.findIndex((order) => this.orderId(order.id) === orderId);
     if (idx >= 0) {
       orders[idx] = { ...orders[idx], ...updates, updatedAt: new Date().toISOString() };
       await this.saveOrders(orders);
@@ -172,32 +193,12 @@ const Catalog = {
   },
 
   async deleteOrder(id) {
-    this.markOrderDeleted(id);
+    const orderId = this.orderId(id);
+    this.markOrderDeleted(orderId);
 
-    const currentOrders = this.getStoredOrders();
-    const orders = currentOrders.filter(o => o.id !== id);
+    const orders = this.getStoredOrders().filter((order) => this.orderId(order.id) !== orderId);
     await this.saveOrders(orders);
-
-    try {
-      await this.deleteOrderOnServer(id);
-    } catch {
-      // ignore
-    }
-
-    try {
-      const serverOrders = await this.requestOrdersFromServer();
-      if (Array.isArray(serverOrders)) {
-        const filteredServerOrders = this.filterDeletedOrders(serverOrders).filter(o => o.id !== id);
-        await this.syncOrdersToServer(filteredServerOrders);
-      }
-    } catch {
-      // ignore
-    }
-
-    const freshLocal = this.getStoredOrders();
-    if (freshLocal.some(o => o.id === id)) {
-      await this.saveOrders(freshLocal.filter(o => o.id !== id));
-    }
+    await this.deleteOrderOnServer(orderId);
   },
 
   getCategories() {

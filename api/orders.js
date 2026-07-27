@@ -157,14 +157,17 @@ module.exports = async (req, res) => {
 
   if (req.method === 'POST') {
     const state = readStoreState();
+    const clientDeletedIds = normalizeDeletedIds(body.deletedOrderIds || []);
+    const mergedDeletedIds = normalizeDeletedIds([...state.deletedOrderIds, ...clientDeletedIds]);
+
     if (Array.isArray(body.orders)) {
-      const merged = mergeOrders(state.orders, body.orders, state.deletedOrderIds);
-      const stored = writeOrders(merged, state.deletedOrderIds);
+      const merged = mergeOrders(state.orders, body.orders, mergedDeletedIds);
+      const stored = writeOrders(merged, mergedDeletedIds);
       return res.status(200).json(stored.orders);
     }
     if (body.order && typeof body.order === 'object') {
-      const merged = mergeOrders(state.orders, [body.order], state.deletedOrderIds);
-      const stored = writeOrders(merged, state.deletedOrderIds);
+      const merged = mergeOrders(state.orders, [body.order], mergedDeletedIds);
+      const stored = writeOrders(merged, mergedDeletedIds);
       return res.status(200).json(stored.orders);
     }
     return res.status(400).json({ error: 'Données de commande requises.' });
