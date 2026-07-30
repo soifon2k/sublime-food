@@ -45,7 +45,7 @@ const SUBLIME_DATA = {
   },  imageFallback: IMG.fallback,
   promoCodes: {},
   deliveryFee: 0,
-  tvaRate: 0.16,
+  tvaRate: 0,
   categories: [
     { id: 'plats', name: 'Plats principaux', icon: '🍗', image: 'menu photo/plat fites.jpeg' },
     { id: 'accompagnements', name: 'Accompagnements', icon: '🍟', image: IMG.frites },

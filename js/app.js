@@ -292,7 +292,6 @@
       <div class="cart-summary">
         <div class="cart-summary-row"><span>Sous-total</span><span>${formatPrice(calc.subtotal)}</span></div>
         ${calc.discount ? `<div class="cart-summary-row"><span>Réduction (${calc.promo.label})</span><span>-${formatPrice(calc.discount)}</span></div>` : ''}
-        <div class="cart-summary-row"><span>TVA (16%)</span><span>${formatPrice(calc.tva)}</span></div>
         <div class="cart-summary-row"><span>Livraison</span><span>${formatPrice(calc.delivery)}</span></div>
         <div class="cart-summary-row total"><span>Total</span><span>${formatPrice(calc.total)}</span></div>
       </div>
